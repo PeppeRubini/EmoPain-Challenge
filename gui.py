@@ -4,7 +4,6 @@ from PIL import Image, ImageTk
 from feat import Detector
 import pandas as pd
 import numpy as np
-from joblib import load
 import time
 import matplotlib.pyplot as plt
 from tensorflow import keras
@@ -21,6 +20,7 @@ indices = [8, 15, 18]
 
 class App:
     def __init__(self, root):
+
         self.pain_list = []
         self.frame_count_list = []
         self.frame_count = 0
@@ -36,57 +36,54 @@ class App:
         self.start_time = None
         self.root = root
         self.root.title("Pain Detector")
-        self.root.geometry("1000x800")
+        self.root.geometry("970x765")
         self.root.resizable(False, False)
 
-        self.ui_frame = tk.Frame(self.root, width=400, height=400, relief=tk.RAISED, borderwidth=5)
-        self.ui_frame.place(x=0, y=0)
+        self.menu_frame = tk.Frame(self.root, width=1000, height=35, relief=tk.RAISED)
+        self.menu_frame.place(x=0, y=0)
 
-        self.video_frame = tk.Frame(self.root, width=600, height=400, relief=tk.RIDGE, borderwidth=5)
-        self.video_frame.place(x=400, y=0)
+        self.video_frame = tk.Frame(self.root, width=500, height=510, relief=tk.RIDGE)
+        self.video_frame.place(x=0, y=35)
 
-        self.video_canvas = tk.Canvas(self.video_frame, width=600, height=400)
+        self.video_canvas = tk.Canvas(self.video_frame, width=500, height=510, bg='black')
         self.video_canvas.pack()
 
-        self.au_frame = tk.Frame(self.root, width=500, height=400, relief=tk.RIDGE, borderwidth=5)
-        self.au_frame.place(x=0, y=400)
+        self.pain_frame = tk.Frame(self.root, width=500, height=212, relief=tk.RIDGE)
+        self.pain_frame.place(x=2, y=550)
 
-        self.plot_au_canvas = tk.Canvas(self.au_frame, width=500, height=400)
+        self.au_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5)
+        self.au_frame.place(x=505, y=35)
+
+        self.plot_au_canvas = tk.Canvas(self.au_frame, width=450, height=350)
         self.plot_au_canvas.pack()
 
-        self.plot_frame = tk.Frame(self.root, width=500, height=400, relief=tk.RIDGE, borderwidth=5)
-        self.plot_frame.place(x=500, y=400)
+        self.plot_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5)
+        self.plot_frame.place(x=505, y=400)
 
-        self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=500, height=400)
+        self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=450, height=350)
         self.plot_pain_canvas.pack()
 
-        self.webcam_button = tk.Button(self.ui_frame, text="Open Webcam", width=40, height=1, bg='red',
-                                       command=self.open_webcam)
-        self.webcam_button.place(x=45, y=20)
+        self.webcam_button = tk.Button(self.menu_frame, text="Open Webcam", width=15, height=1, command=self.open_webcam)
+        self.webcam_button.place(x=10, y=5)
+        # todo aggiungere la funzionalità di apertura del file explorer
+        self.file_button = tk.Button(self.menu_frame, text="Open File Explorer", width=15, height=1)
+        self.file_button.place(x=130, y=5)
+        self.video_button = tk.Button(self.menu_frame, text="Load Video", width=15, height=1, command=self.open_video)
+        self.video_button.place(x=250, y=5)
 
-        self.image_button = tk.Button(self.ui_frame, text="Load Image", width=40, height=1, bg='red',
-                                      command=self.open_image)
-        self.image_button.place(x=45, y=80)
-
-        self.video_button = tk.Button(self.ui_frame, text="Load Video", width=40, height=1, bg='red',
-                                      command=self.open_video)
-        self.video_button.place(x=45, y=180)
-
-        self.entry_image_path = tk.Entry(self.ui_frame, width=48)
-        self.entry_image_path.insert(tk.END, "inserire/percorso/assoluto/file/immagine.jpg")
-        self.entry_image_path.place(x=45, y=120)
-
-        self.entry_video_path = tk.Entry(self.ui_frame, width=48)
+        self.entry_video_path = tk.Entry(self.menu_frame, width=48)
         self.entry_video_path.insert(tk.END, "inserire/percorso/assoluto/file/video.mp4")
         self.entry_video_path.place(x=45, y=220)
 
-        self.pain_label = tk.Label(self.ui_frame)
+        # todo sistemare la posizione di pain_label e fps_label ed eventualmente cambiare la loro visualizzazione
+        self.pain_label = tk.Label(self.pain_frame)
         self.pain_label.config(font=('Times', 22))
-        self.pain_label.place(x=45, y=280)
+        self.pain_label.place(x=10, y=50)
+        self.pain_label.config(text="PAIN LEVEL: 999")
 
-        self.fps_label = tk.Label(self.ui_frame)
+        self.fps_label = tk.Label(self.pain_frame)
         self.fps_label.config(font=('Times', 22))
-        self.fps_label.place(x=45, y=320)
+        self.fps_label.place(x=10, y=100)
 
     def open_webcam(self):
         self.frame_count = 0
@@ -139,20 +136,20 @@ class App:
                 plt.xlabel('frame')
                 plt.ylabel('pain')
                 plt.grid(True)
-                plt.savefig('pain_graph.png')
+                plt.savefig('./graphs/pain_graph.png')
                 plt.close()
 
-                self.image_g = Image.open('../../Desktop/PainDetector/pain_graph.png')
+                self.image_g = Image.open('./graphs/pain_graph.png')
                 self.photo_g = ImageTk.PhotoImage(self.image_g.resize((500, 400)))
                 self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
                 self.plot_pain_canvas.image = self.photo_g
 
                 plt.bar(au_list, au_row)
                 plt.title('Action Units')
-                plt.savefig('au_bar_graph.png')
+                plt.savefig('./graphs/au_bar_graph.png')
                 plt.close()
 
-                self.image_au = Image.open('../../Desktop/PainDetector/au_bar_graph.png')
+                self.image_au = Image.open('./graphs/au_bar_graph.png')
                 self.photo_au = ImageTk.PhotoImage(self.image_au.resize((500, 400)))
                 self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
                 self.plot_au_canvas.image = self.photo_au
@@ -167,7 +164,7 @@ class App:
             # Schedule the next frame update
             self.video_canvas.after(15, self.show_frame, self.start_time)
 
-    def open_image(self):
+    """def open_image(self):
         # todo modificare predict se serve questo metodo
         self.image_path = self.entry_image_path.get()
         frame = cv2.imread(self.image_path)
@@ -206,7 +203,7 @@ class App:
 
         # Update the canvas with the new frame
         self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
-
+"""
 
 # model = None
 # detector = None
