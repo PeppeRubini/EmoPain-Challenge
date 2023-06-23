@@ -27,6 +27,18 @@ def make_square(frame, min_size=256, fill_color=(0, 0, 0, 0)):
     return new_frame
 
 
+def make_4_3(frame):
+    ratio43 = 4 / 3
+    ratio34 = 3 / 4
+    if frame.shape[0] > frame.shape[1]:
+        # todo capire perchè con i video verticali non funziona bene
+        x = abs(frame.shape[1] - (int(frame.shape[1] * ratio34)))
+        new_frame = np.pad(frame, ((0, 0), (int(x/2), int(x/2)), (0, 0)), 'constant')
+    else:
+        y = abs((int((frame.shape[0] * ratio43) - frame.shape[0])))
+        new_frame = np.pad(frame, ((int(y/2), int(y/2)), (0, 0), (0, 0)), 'constant')
+    return new_frame
+
 class App:
     def __init__(self, root):
 
@@ -54,20 +66,20 @@ class App:
         self.video_frame = tk.Frame(self.root, width=640, height=480, relief=tk.RIDGE, borderwidth=5)
         self.video_frame.place(x=0, y=35)
 
-        self.video_canvas = tk.Canvas(self.video_frame, width=640, height=480)     # 490, 478
+        self.video_canvas = tk.Canvas(self.video_frame, width=640, height=480)  # 490, 478
         self.video_canvas.pack()
 
         self.pain_frame = tk.Frame(self.root, width=500, height=212, relief=tk.RIDGE)
         self.pain_frame.place(x=2, y=550)
 
         self.au_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5)
-        self.au_frame.place(x=655, y=35)     # 505, 35
+        self.au_frame.place(x=655, y=35)  # 505, 35
 
         self.plot_au_canvas = tk.Canvas(self.au_frame, width=450, height=350)
         self.plot_au_canvas.pack()
 
         self.plot_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5)
-        self.plot_frame.place(x=655, y=400)   # 505, 400
+        self.plot_frame.place(x=655, y=400)  # 505, 400
 
         self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=450, height=350)
         self.plot_pain_canvas.pack()
@@ -95,8 +107,9 @@ class App:
 
     def open_video(self):
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a File",
-                                      filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
-                                                                  "*.avi", "*.mkv", "*.webm", "*.m4v"])])
+                                                        filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
+                                                                                    "*.avi", "*.mkv", "*.webm",
+                                                                                    "*.m4v"])])
         self.frame_count = 0
         self.start_time = time.time()
         self.cap = cv2.VideoCapture(self.video_path)
@@ -105,6 +118,11 @@ class App:
     def show_frame(self, st):
         # start_time = time.time()
         ret, frame = self.cap.read()
+        # todo aggiungere try perchè alla fine del video crasha
+        if frame.shape[0]/frame.shape[1] != 0.75:
+            frame = make_4_3(frame)
+            frame = cv2.resize(frame, (640, 480))
+
         """try:
             if frame.shape[0] > frame.shape[1]:
                 aspect_ratio = frame.shape[1] / frame.shape[0]
