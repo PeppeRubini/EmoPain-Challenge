@@ -28,7 +28,8 @@ def label_dict(array):
 
 def print_dict(d):
     for k, v in d.items():
-        print(k, v)
+        # print(k, v)
+        print(v)
 
 
 import matplotlib.pyplot as plt
@@ -42,6 +43,6 @@ def pie_chart_lable(dictionary):
         labels.append(x)
         sizes.append(y)
     # Plot
-    plt.pie(sizes, labels=labels)
+    plt.pie(sizes, labels=labels, autopct='%1.1f%%')
     plt.axis('equal')
     plt.show()

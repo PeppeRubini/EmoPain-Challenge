@@ -9,6 +9,8 @@ geometric_data_path_train = "./Dataset/Face Features/Geometric Features/train/"
 label_data_path_valid = "./Dataset/Pain Labels/valid/"
 geometric_data_path_valid = "./Dataset/Face Features/Geometric Features/valid/"
 
+time_step = 150
+
 
 def clean(label_path, geometric_path):
     for file in os.listdir(label_path):
@@ -18,11 +20,33 @@ def clean(label_path, geometric_path):
             df_label = pd.read_csv(label_path + file, header=None)
             df_label.columns = ['pain_label']
             df_merged = pd.concat([df_geo, df_label], axis=1)
-            # salvo il file
             df_merged = df_merged[header_list]
+            # elimino righe con pain label pari a zero per time_step volte di fila
+            count = 0
+            drop_stack = []
+            for index, row in df_merged.iterrows():
+                if row.loc['pain_label'] == 0:
+                    count += 1
+                else:
+                    count = 0
+                if count == time_step:
+                    drop_stack.append((index - count + 1, index + 1))
+                    count = 0
+            while drop_stack:
+                begin, end = drop_stack.pop()
+                df_merged.drop(df_merged.index[begin:end], inplace=True)
+            # cambio valori label
+            df_merged['pain_label'].replace([1, 2, 3], 1, inplace=True)
+            df_merged['pain_label'].replace([4, 5, 6], 2, inplace=True)
+            df_merged['pain_label'].replace([7, 8, 9, 10], 3, inplace=True)
+            # salvo il file
             df_merged.to_csv(str(label_path).replace("Dataset", "CleanDataset").replace("Pain Labels/", "") + file,
                              index=False)
 
 
+print("cleaning training set")
 clean(label_data_path_train, geometric_data_path_train)
+print("training set cleaning done")
+print("cleaning validation set")
 clean(label_data_path_valid, geometric_data_path_valid)
+print("validation set cleaning done")

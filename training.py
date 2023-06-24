@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import os
+import utils
 import tensorflow as tf
 from keras.models import Sequential
 from keras.layers import LSTM, Dense
@@ -35,14 +36,18 @@ def array_stepping(x, y, step, overlapping_rate):
 
 path_clean_dataset_train = "./CleanDataset/train/"
 path_clean_dataset_valid = "./CleanDataset/valid/"
-time_step = 4
+
+time_step = 150
 num_features = 17
-overlapping_rate = 0.5
+overlapping_rate = 0.75
+
 x_train, y_train = csv_to_array(path_clean_dataset_train)
 x_valid, y_valid = csv_to_array(path_clean_dataset_valid)
 
-"""import utils
-dict_train = utils.label_dict(y_train)
+X_t, Y_t = array_stepping(x_train, y_train, time_step, overlapping_rate)
+X_v, Y_v = array_stepping(x_valid, y_valid, time_step, overlapping_rate)
+
+"""dict_train = utils.label_dict(y_train)
 dict_valid = utils.label_dict(y_valid)
 print("\ntraining")
 utils.print_dict(dict_train)
@@ -51,15 +56,16 @@ utils.print_dict(dict_valid)
 utils.pie_chart_lable(utils.label_dict(y_train))
 utils.pie_chart_lable(utils.label_dict(y_valid))"""
 
-X_t, Y_t = array_stepping(x_train, y_train, time_step, overlapping_rate)
-X_v, Y_v = array_stepping(x_valid, y_valid, time_step, overlapping_rate)
 """dict_train = utils.label_dict(Y_t)
 dict_valid = utils.label_dict(Y_v)
 print("\ntraining")
 utils.print_dict(dict_train)
 print("\nvalidation")
-utils.print_dict(dict_valid)"""
+utils.print_dict(dict_valid)
+utils.pie_chart_lable(dict_train)
+utils.pie_chart_lable(dict_valid)"""
 
+"""
 model = Sequential()
 model.add(LSTM(64, dropout=0.5, recurrent_dropout=0.2,
                input_shape=(time_step, num_features), return_sequences=True))
@@ -79,3 +85,4 @@ y_test = model.predict(X_v)
 print(y_test)
 score = model.evaluate(X_v, Y_v, batch_size=16)
 print(score)
+"""
