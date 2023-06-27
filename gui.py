@@ -4,7 +4,6 @@ from PIL import Image, ImageTk
 from feat import Detector
 import pandas as pd
 import numpy as np
-from joblib import load
 import time
 import matplotlib.pyplot as plt
 from tensorflow import keras
@@ -17,6 +16,16 @@ face_model = "retinaface"
 landmark_model = "mobilenet"
 au_model = "xgb"
 indices = [8, 15, 18]
+
+
+def make_4_3(frame):
+    if frame.shape[0] > frame.shape[1]:
+        x = abs(frame.shape[1] - (int(frame.shape[1] * 3 / 4)))
+        new_frame = np.pad(frame, ((0, 0), (int(x * 2), int(x * 2)), (0, 0)), 'constant')
+    else:
+        y = abs((int((frame.shape[0] * 4 / 3) - frame.shape[0])))
+        new_frame = np.pad(frame, ((int(y / 2), int(y / 2)), (0, 0), (0, 0)), 'constant')
+    return new_frame
 
 
 class App:
@@ -36,57 +45,63 @@ class App:
         self.start_time = None
         self.root = root
         self.root.title("Pain Detector")
-        self.root.geometry("1000x800")
+        self.root.geometry("1148x758")
+        self.root.configure(bg="#F0FAFF")
         self.root.resizable(False, False)
 
-        self.ui_frame = tk.Frame(self.root, width=400, height=400, relief=tk.RAISED, borderwidth=5)
-        self.ui_frame.place(x=0, y=0)
+        def create_button(x, y, img1, img2, cmd):
+            base_button = ImageTk.PhotoImage(Image.open('./buttons/' + img1))
+            clicked_button = ImageTk.PhotoImage(Image.open('./buttons/' + img2))
 
-        self.video_frame = tk.Frame(self.root, width=600, height=400, relief=tk.RIDGE, borderwidth=5)
-        self.video_frame.place(x=400, y=0)
+            def on_enter(event):
+                button['image'] = clicked_button
 
-        self.video_canvas = tk.Canvas(self.video_frame, width=600, height=400)
+            def on_leave(event):
+                button['image'] = base_button
+
+            button = tk.Button(self.menu_frame,
+                               image=clicked_button,
+                               border=0,
+                               cursor='hand2',
+                               command=cmd,
+                               relief=tk.SUNKEN,
+                               bg="#F0FAFF")
+
+            button.bind("<Enter>", on_enter)
+            button.bind("<Leave>", on_leave)
+            button.place(x=x, y=y)
+
+        self.video_frame = tk.Frame(self.root, width=640, height=480, relief=tk.RIDGE, borderwidth=5, bg="#1F77B4")
+        self.video_frame.place(x=10, y=10)
+
+        self.video_canvas = tk.Canvas(self.video_frame, width=640, height=480, bg="#E6EEF2")
         self.video_canvas.pack()
 
-        self.au_frame = tk.Frame(self.root, width=500, height=400, relief=tk.RIDGE, borderwidth=5)
-        self.au_frame.place(x=0, y=400)
+        self.au_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5, bg="#1F77B4")
+        self.au_frame.place(x=674, y=10)
 
-        self.plot_au_canvas = tk.Canvas(self.au_frame, width=500, height=400)
+        self.plot_au_canvas = tk.Canvas(self.au_frame, width=450, height=350, bg="#E6EEF2")
         self.plot_au_canvas.pack()
 
-        self.plot_frame = tk.Frame(self.root, width=500, height=400, relief=tk.RIDGE, borderwidth=5)
-        self.plot_frame.place(x=500, y=400)
+        self.plot_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5, bg="#1F77B4")
+        self.plot_frame.place(x=674, y=384)
 
-        self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=500, height=400)
+        self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=450, height=350, bg="#E6EEF2")
         self.plot_pain_canvas.pack()
 
-        self.webcam_button = tk.Button(self.ui_frame, text="Open Webcam", width=40, height=1, bg='red',
-                                       command=self.open_webcam)
-        self.webcam_button.place(x=45, y=20)
+        self.menu_frame = tk.Frame(self.root, width=674, height=254, relief=tk.RIDGE, bg="#F0FAFF")
+        self.menu_frame.place(x=0, y=504)
 
-        self.image_button = tk.Button(self.ui_frame, text="Load Image", width=40, height=1, bg='red',
-                                      command=self.open_image)
-        self.image_button.place(x=45, y=80)
+        create_button(115, 35, 'webcam button.png', 'webcam button clicked.png', self.open_webcam)
+        create_button(410, 35, 'video button.png', 'video button clicked.png', self.open_video)
 
-        self.video_button = tk.Button(self.ui_frame, text="Load Video", width=40, height=1, bg='red',
-                                      command=self.open_video)
-        self.video_button.place(x=45, y=180)
+        self.fps_label = tk.Label(self.menu_frame)
+        self.fps_label.config(font=('Helvetica', 18), fg="#00356A", bg="#F0FAFF")
+        self.fps_label.place(x=124, y=150)
 
-        self.entry_image_path = tk.Entry(self.ui_frame, width=48)
-        self.entry_image_path.insert(tk.END, "inserire/percorso/assoluto/file/immagine.jpg")
-        self.entry_image_path.place(x=45, y=120)
-
-        self.entry_video_path = tk.Entry(self.ui_frame, width=48)
-        self.entry_video_path.insert(tk.END, "inserire/percorso/assoluto/file/video.mp4")
-        self.entry_video_path.place(x=45, y=220)
-
-        self.pain_label = tk.Label(self.ui_frame)
-        self.pain_label.config(font=('Times', 22))
-        self.pain_label.place(x=45, y=280)
-
-        self.fps_label = tk.Label(self.ui_frame)
-        self.fps_label.config(font=('Times', 22))
-        self.fps_label.place(x=45, y=320)
+        self.pain_label = tk.Label(self.menu_frame)
+        self.pain_label.config(font=('Helvetica', 18), fg="#00356A", bg="#F0FAFF")
+        self.pain_label.place(x=376, y=150)
 
     def open_webcam(self):
         self.frame_count = 0
@@ -95,15 +110,24 @@ class App:
         self.show_frame(self.start_time)
 
     def open_video(self):
+        self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
+                                                        filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
+                                                                                    "*.avi", "*.mkv", "*.webm",
+                                                                                    "*.m4v"])])
         self.frame_count = 0
         self.start_time = time.time()
-        self.video_path = self.entry_video_path.get()
         self.cap = cv2.VideoCapture(self.video_path)
         self.show_frame(self.start_time)
 
     def show_frame(self, st):
         # start_time = time.time()
         ret, frame = self.cap.read()
+        try:
+            if frame.shape[1] / frame.shape[0] != 4 / 3:
+                frame = make_4_3(frame)
+                frame = cv2.resize(frame, (640, 480))
+        except:
+            print("Frame finished")
         self.frame_count += 1
         plotting = True
         if ret:
@@ -111,19 +135,23 @@ class App:
             self.image = Image.fromarray(frame)
             self.photo = ImageTk.PhotoImage(self.image)
             if self.frame_count % 10 == 0:
-                faces = detector.detect_faces(frame, threshold=0.5)
-                landmarks = detector.detect_landmarks(frame, faces)
-                aus = detector.detect_aus(frame, landmarks)
-                df_au = pd.DataFrame(columns=au_r_list)
-                au_row = np.delete(aus[0][0] * 5, indices)
-                df_au.loc[len(df_au)] = au_row
-                # todo creare ciclo per prendere un numero di frame pari a timestep (eliminare le due righe sottostanti)
-                df_au.loc[len(df_au)] = au_row
-                df_au.loc[len(df_au)] = au_row
-                a = df_au.to_numpy()
-                a = a.reshape(1, 3, 17)
-                pain = model.predict(a)
-                print(pain[0][0])
+                try:
+                    faces = detector.detect_faces(frame, threshold=0.5)
+                    landmarks = detector.detect_landmarks(frame, faces)
+                    aus = detector.detect_aus(frame, landmarks)
+                    df_au = pd.DataFrame(columns=au_r_list)
+                    au_row = np.delete(aus[0][0] * 5, indices)
+                    df_au.loc[len(df_au)] = au_row
+                    # todo creare ciclo per prendere un numero di frame pari a timestep (eliminare le due righe sottostanti)
+                    df_au.loc[len(df_au)] = au_row
+                    df_au.loc[len(df_au)] = au_row
+                    a = df_au.to_numpy()
+                    a = a.reshape(1, 3, 17)
+                    pain = model.predict(a)
+                    print(pain[0][0])
+                except:
+                    print('Error in pipeline of pain intensity extraction')
+                    plotting = False
             else:
                 time.sleep(0.025)
                 plotting = False
@@ -139,21 +167,21 @@ class App:
                 plt.xlabel('frame')
                 plt.ylabel('pain')
                 plt.grid(True)
-                plt.savefig('pain_graph.png')
+                plt.savefig('./graphs/pain_graph.png')
                 plt.close()
 
-                self.image_g = Image.open('../../Desktop/PainDetector/pain_graph.png')
-                self.photo_g = ImageTk.PhotoImage(self.image_g.resize((500, 400)))
+                self.image_g = Image.open('./graphs/pain_graph.png')
+                self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
                 self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
                 self.plot_pain_canvas.image = self.photo_g
 
                 plt.bar(au_list, au_row)
                 plt.title('Action Units')
-                plt.savefig('au_bar_graph.png')
+                plt.savefig('./graphs/au_bar_graph.png')
                 plt.close()
 
-                self.image_au = Image.open('../../Desktop/PainDetector/au_bar_graph.png')
-                self.photo_au = ImageTk.PhotoImage(self.image_au.resize((500, 400)))
+                self.image_au = Image.open('./graphs/au_bar_graph.png')
+                self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
                 self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
                 self.plot_au_canvas.image = self.photo_au
 
@@ -167,49 +195,7 @@ class App:
             # Schedule the next frame update
             self.video_canvas.after(15, self.show_frame, self.start_time)
 
-    def open_image(self):
-        # todo modificare predict se serve questo metodo
-        self.image_path = self.entry_image_path.get()
-        frame = cv2.imread(self.image_path)
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        self.image = Image.fromarray(frame)
-        self.photo = ImageTk.PhotoImage(self.image)
-        faces_fex = detector.detect_faces(frame, threshold=0.5)
-        landmarks_fex = detector.detect_landmarks(frame, faces_fex)
-        au_fex = detector.detect_aus(frame, landmarks_fex)
-        df_au = pd.DataFrame(columns=au_r_list)
-        indices = [8, 15, 18]
-        au_row = np.delete(au_fex[0][0] * 5, indices)
-        df_au.loc[len(df_au)] = au_row
-        pain = model.predict(df_au)
-        self.pain_label.config(text=f"PAIN LEVEL: {pain[0]:.2f}")
 
-        plt.bar(['Pain Level'], pain)
-        plt.ylim([0, 3])
-        plt.savefig('pain_graph.png')
-        plt.close()
-
-        self.image_g = Image.open('../../Desktop/PainDetector/pain_graph.png')
-        self.photo_g = ImageTk.PhotoImage(self.image_g.resize((500, 400)))
-        self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
-        self.plot_pain_canvas.image = self.photo_g
-
-        plt.bar(au_list, au_row)
-        plt.title('Action Units')
-        plt.savefig('au_bar_graph.png')
-        plt.close()
-
-        self.image_au = Image.open('../../Desktop/PainDetector/au_bar_graph.png')
-        self.photo_au = ImageTk.PhotoImage(self.image_au.resize((500, 400)))
-        self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
-        self.plot_au_canvas.image = self.photo_au
-
-        # Update the canvas with the new frame
-        self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
-
-
-# model = None
-# detector = None
 model = keras.models.load_model('pain_model/modello.h5')
 detector = Detector(face_model=face_model, landmark_model=landmark_model, au_model=au_model)
 root = tk.Tk()
