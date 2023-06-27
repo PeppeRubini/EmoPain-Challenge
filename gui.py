@@ -1,3 +1,4 @@
+import threading
 import tkinter as tk
 import cv2
 from PIL import Image, ImageTk
@@ -103,6 +104,17 @@ class App:
         self.pain_label.config(font=('Helvetica', 18), fg="#00356A", bg="#F0FAFF")
         self.pain_label.place(x=376, y=150)
 
+        # aggiunte per thread
+        self.frame = None
+        self.frame_list = []
+        self.predicting = False
+        self.plotting_au = False
+        self.plotting_pain = False
+        self.pain = None
+        self.au_row = None
+        self.df_au = None
+        self.n_pred = 0
+
     def open_webcam(self):
         self.frame_count = 0
         self.start_time = time.time()
@@ -119,84 +131,99 @@ class App:
         self.cap = cv2.VideoCapture(self.video_path)
         self.show_frame(self.start_time)
 
+    def plot_au(self):
+        plt.bar(au_list, self.au_row)
+        plt.title('Action Units')
+        plt.savefig('./graphs/au_bar_graph.png')
+        plt.close()
+
+        self.image_au = Image.open('./graphs/au_bar_graph.png')
+        self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
+        self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
+        self.plot_au_canvas.image = self.photo_au
+
+    def feature_extraction(self):
+        try:
+            self.predicting = True
+            self.df_au = pd.DataFrame(columns=au_r_list)
+            for i in range(150):
+                frame = self.frame_list.pop()
+                # print(f"lista dopo pop: {len(self.frame_list)}")
+                faces = detector.detect_faces(frame, threshold=0.5)
+                landmarks = detector.detect_landmarks(frame, faces)
+                aus = detector.detect_aus(frame, landmarks)
+                self.au_row = np.delete(aus[0][0] * 5, indices)
+                threading.Thread(target=self.plot_au).start()
+                self.df_au.loc[len(self.df_au)] = self.au_row
+                print(f"feature estratte {i + 1}")
+            print("effettuo predizione")
+            threading.Thread(target=self.predict).start()
+        except:
+            print('Error in pipeline of pain intensity extraction')
+            self.plotting_pain = False
+            self.predicting = False
+
+    def predict(self):
+        print("nel thread predizione")
+        a = self.df_au.to_numpy()
+        a = a.reshape(1, 150, 17)
+        pain = model.predict(a)
+        print(pain[0][0])
+        # todo rivedere grafico
+        self.predicting = False
+        self.n_pred += 1
+        self.pain_label.config(text=f"PAIN LEVEL: {float(pain[0][0]):.2f}")
+        self.pain_list.append(pain[0][0])
+        self.frame_count_list.append(self.n_pred)
+
+        plt.figure()
+        plt.plot(self.frame_count_list, self.pain_list)
+        plt.ylim([0, 3])
+        plt.xlabel('frame')
+        plt.ylabel('pain')
+        plt.grid(True)
+        plt.savefig('./graphs/pain_graph.png')
+        plt.close()
+
+        self.image_g = Image.open('./graphs/pain_graph.png')
+        self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
+        self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
+        self.plot_pain_canvas.image = self.photo_g
+
     def show_frame(self, st):
         # start_time = time.time()
-        ret, frame = self.cap.read()
+        ret, self.frame = self.cap.read()
         try:
-            if frame.shape[1] / frame.shape[0] != 4 / 3:
-                frame = make_4_3(frame)
+            if self.frame.shape[1] / self.frame.shape[0] != 4 / 3:
+                frame = make_4_3(self.frame)
                 frame = cv2.resize(frame, (640, 480))
         except:
             print("Frame finished")
         self.frame_count += 1
         plotting = True
         if ret:
-            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            self.image = Image.fromarray(frame)
+            self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
+            self.image = Image.fromarray(self.frame)
             self.photo = ImageTk.PhotoImage(self.image)
-            if self.frame_count % 10 == 0:
-                try:
-                    faces = detector.detect_faces(frame, threshold=0.5)
-                    landmarks = detector.detect_landmarks(frame, faces)
-                    aus = detector.detect_aus(frame, landmarks)
-                    df_au = pd.DataFrame(columns=au_r_list)
-                    au_row = np.delete(aus[0][0] * 5, indices)
-                    df_au.loc[len(df_au)] = au_row
-                    # todo creare ciclo per prendere un numero di frame pari a timestep (eliminare le due righe sottostanti)
-                    df_au.loc[len(df_au)] = au_row
-                    df_au.loc[len(df_au)] = au_row
-                    a = df_au.to_numpy()
-                    a = a.reshape(1, 3, 17)
-                    pain = model.predict(a)
-                    print(pain[0][0])
-                except:
-                    print('Error in pipeline of pain intensity extraction')
-                    plotting = False
-            else:
-                time.sleep(0.025)
-                plotting = False
 
-            if plotting:
-                self.pain_label.config(text=f"PAIN LEVEL: {pain[0][0]:.2f}")
-                self.pain_list.append(pain[0][0])
-                self.frame_count_list.append(self.frame_count)
-
-                plt.figure()
-                plt.plot(self.frame_count_list, self.pain_list)
-                plt.ylim([0, 3])
-                plt.xlabel('frame')
-                plt.ylabel('pain')
-                plt.grid(True)
-                plt.savefig('./graphs/pain_graph.png')
-                plt.close()
-
-                self.image_g = Image.open('./graphs/pain_graph.png')
-                self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
-                self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
-                self.plot_pain_canvas.image = self.photo_g
-
-                plt.bar(au_list, au_row)
-                plt.title('Action Units')
-                plt.savefig('./graphs/au_bar_graph.png')
-                plt.close()
-
-                self.image_au = Image.open('./graphs/au_bar_graph.png')
-                self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
-                self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
-                self.plot_au_canvas.image = self.photo_au
+            self.frame_list.append(self.frame)
 
             elapsed_time = time.time() - st
             fps = self.frame_count / elapsed_time
             self.fps_label.config(text=f"FPS: {fps:.2f}")
-
+            # print(f"lista prima del thread: {len(self.frame_list)}")
             # Update the canvas with the new frame
             self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
+            if self.frame_count % 150 == 0:
+                print("estratti 150 frame")
+                if not self.predicting:
+                    threading.Thread(target=self.feature_extraction).start()
 
             # Schedule the next frame update
             self.video_canvas.after(15, self.show_frame, self.start_time)
 
 
-model = keras.models.load_model('pain_model/modello.h5')
+model = keras.models.load_model('pain_model/modello150.h5')
 detector = Detector(face_model=face_model, landmark_model=landmark_model, au_model=au_model)
 root = tk.Tk()
 app = App(root)
