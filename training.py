@@ -20,37 +20,38 @@ def csv_to_array(path_geo, path_label):
     return arr_geo, arr_label
 
 
-def array_input_step(x, step):
+def array_stepping(x, y, step, overlapping_rate):
     X = []
-    i = 0
-    for e in x[:-(step-1)]:
-        l = []
-        l.append(list(e))
-        i += 1
-        for j in range(i,step + i - 1):
-            l.append(list(x[j]))
+    Y = []
+    overlapping = int(step * overlapping_rate)
+    start = 0
+    end = start + step
+    while end < len(x):
+        # print(f"{start}:{end}=>{x[start:end]}>>>>{y[end-2]}")
+        l = x[start:end]
+        start = end - overlapping
+        end = start + step
         X.append(l)
-    return np.array(X)
-
-
-def array_output_step(y, step):
-    Y = y[step-1:]
-    return np.array(Y)
+        Y.append(y[end-overlapping])
+    return np.array(X), np.array(Y)
 
 
 path_geo_train = "./CleanDataset/Face Features/Geometric Features/train/"
 path_label_train = "./CleanDataset/Pain Labels/train/"
 path_geo_valid = "./CleanDataset/Face Features/Geometric Features/valid/"
 path_label_valid = "./CleanDataset/Pain Labels/valid/"
-time_step = 3
+time_step = 4
 num_features = 17
+overlapping_rate = 0.5
 x_train, y_train = csv_to_array(path_geo_train, path_label_train)
 x_valid, y_valid = csv_to_array(path_geo_valid, path_label_valid)
-X_t = array_input_step(x_train, time_step)
-Y_t = array_output_step(y_train, time_step)
-X_v = array_input_step(x_valid, time_step)
-Y_v = array_output_step(y_valid, time_step)
-
+X_t, Y_t = array_stepping(x_train, y_train, time_step, overlapping_rate)
+X_v, Y_v = array_stepping(x_valid, y_valid, time_step, overlapping_rate)
+print(X_t.shape)
+print(Y_t.shape)
+print(X_v.shape)
+print(Y_v.shape)
+print(X_t)
 model = Sequential()
 model.add(LSTM(64, dropout=0.5, recurrent_dropout=0.2,
                input_shape=(time_step, num_features), return_sequences=True))
@@ -67,3 +68,5 @@ X_v = X_v.reshape((len(X_v), time_step, num_features))
 
 y_test = model.predict(X_v)
 print(y_test)
+score = model.evaluate(X_v, Y_v, batch_size=16)
+print(score)
