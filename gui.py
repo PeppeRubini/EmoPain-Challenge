@@ -60,14 +60,8 @@ class App:
             def on_leave(event):
                 button['image'] = base_button
 
-            button = tk.Button(self.menu_frame,
-                               image=clicked_button,
-                               border=0,
-                               cursor='hand2',
-                               command=cmd,
-                               relief=tk.SUNKEN,
-                               bg="#F0FAFF")
-
+            button = tk.Button(self.menu_frame, image=clicked_button, border=0, cursor='hand2', command=cmd,
+                               relief=tk.SUNKEN, bg="#F0FAFF")
             button.bind("<Enter>", on_enter)
             button.bind("<Leave>", on_leave)
             button.place(x=x, y=y)
@@ -78,11 +72,19 @@ class App:
         self.video_canvas = tk.Canvas(self.video_frame, width=640, height=480, bg="#E6EEF2")
         self.video_canvas.pack()
 
+        self.video_label = tk.Label(self.video_canvas, text="Nessun video selezionato", font=('Helvetica', 16, 'bold'),
+                                    fg="#00356A", bg="#E6EEF2")
+        self.video_label.place(x=195, y=225)
+
         self.au_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5, bg="#1F77B4")
         self.au_frame.place(x=674, y=10)
 
         self.plot_au_canvas = tk.Canvas(self.au_frame, width=450, height=350, bg="#E6EEF2")
         self.plot_au_canvas.pack()
+
+        self.plot_au_label = tk.Label(self.plot_au_canvas, text="Nessun grafico delle action unit generato",
+                                      font=('Helvetica', 16, 'bold'), fg="#00356A", bg="#E6EEF2")
+        self.plot_au_label.place(x=20, y=160)
 
         self.plot_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5, bg="#1F77B4")
         self.plot_frame.place(x=674, y=384)
@@ -90,18 +92,20 @@ class App:
         self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=450, height=350, bg="#E6EEF2")
         self.plot_pain_canvas.pack()
 
+        self.plot_pain_label = tk.Label(self.plot_pain_canvas, text="Nessun grafico del dolore generato",
+                                        font=('Helvetica', 16, 'bold'), fg="#00356A", bg="#E6EEF2")
+        self.plot_pain_label.place(x=50, y=160)
+
         self.menu_frame = tk.Frame(self.root, width=674, height=254, relief=tk.RIDGE, bg="#F0FAFF")
         self.menu_frame.place(x=0, y=504)
 
         create_button(115, 35, 'webcam button.png', 'webcam button clicked.png', self.open_webcam)
         create_button(410, 35, 'video button.png', 'video button clicked.png', self.open_video)
 
-        self.fps_label = tk.Label(self.menu_frame)
-        self.fps_label.config(font=('Helvetica', 18), fg="#00356A", bg="#F0FAFF")
+        self.fps_label = tk.Label(self.menu_frame, font=('Helvetica', 18), fg="#00356A", bg="#F0FAFF")
         self.fps_label.place(x=124, y=150)
 
-        self.pain_label = tk.Label(self.menu_frame)
-        self.pain_label.config(font=('Helvetica', 18), fg="#00356A", bg="#F0FAFF")
+        self.pain_label = tk.Label(self.menu_frame, font=('Helvetica', 18), fg="#00356A", bg="#F0FAFF")
         self.pain_label.place(x=376, y=150)
 
         # aggiunte per thread
@@ -116,12 +120,14 @@ class App:
         self.n_pred = 0
 
     def open_webcam(self):
+        self.video_label.place_forget()
         self.frame_count = 0
         self.start_time = time.time()
         self.cap = cv2.VideoCapture(0)
         self.show_frame(self.start_time)
 
     def open_video(self):
+        self.video_label.place_forget()
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
                                                         filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
                                                                                     "*.avi", "*.mkv", "*.webm",
@@ -137,6 +143,7 @@ class App:
         plt.savefig('./graphs/au_bar_graph.png')
         plt.close()
 
+        self.plot_au_label.place_forget()
         self.image_au = Image.open('./graphs/au_bar_graph.png')
         self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
         self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
@@ -185,6 +192,7 @@ class App:
         plt.savefig('./graphs/pain_graph.png')
         plt.close()
 
+        self.plot_pain_label.place_forget()
         self.image_g = Image.open('./graphs/pain_graph.png')
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
         self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
@@ -195,8 +203,8 @@ class App:
         ret, self.frame = self.cap.read()
         try:
             if self.frame.shape[1] / self.frame.shape[0] != 4 / 3:
-                frame = make_4_3(self.frame)
-                frame = cv2.resize(frame, (640, 480))
+                self.frame = make_4_3(self.frame)
+                self.frame = cv2.resize(self.frame, (640, 480))
         except:
             print("Frame finished")
         self.frame_count += 1
