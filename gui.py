@@ -166,7 +166,7 @@ class App:
             threading.Thread(target=self.plot_au).start()
             self.df_au.loc[len(self.df_au)] = self.au_row
             self.n_extracted_feature += 1
-            # print(f"****feature estratte {self.n_extracted_feature}")
+            print(f"****feature estratte {self.n_extracted_feature}")
             if self.n_extracted_feature == 150:
                 threading.Thread(target=self.predict).start()
                 self.n_extracted_feature = 0
@@ -200,9 +200,7 @@ class App:
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
         self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
         self.plot_pain_canvas.image = self.photo_g
-        # todo rivedere
-        self.df_au = None
-        self.df_au = pd.DataFrame(columns=au_r_list)
+        self.df_au = self.df_au.iloc[0:0]
 
     def show_frame(self, st):
         # start_time = time.time()
