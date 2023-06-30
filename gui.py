@@ -8,6 +8,9 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 from tensorflow import keras
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning)
 
 au_r_list = ['AU01_r', 'AU02_r', 'AU04_r', 'AU05_r', 'AU06_r', 'AU07_r',
              'AU09_r', 'AU10_r', 'AU12_r', 'AU14_r', 'AU15_r', 'AU17_r',
@@ -72,9 +75,9 @@ class App:
         self.video_canvas = tk.Canvas(self.video_frame, width=640, height=480, bg="#E6EEF2")
         self.video_canvas.pack()
 
-        self.video_label = tk.Label(self.video_canvas, text="Nessun video selezionato", font=('Helvetica', 16, 'bold'),
-                                    fg="#00356A", bg="#E6EEF2")
-        self.video_label.place(x=195, y=225)
+        self.video_label = tk.Label(self.video_canvas, text="No video source", font=('Helvetica', 16, 'bold'),
+                                    fg="#1F77B4", bg="#E6EEF2")
+        self.video_label.place(x=240, y=225)
 
         self.au_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5, bg="#1F77B4")
         self.au_frame.place(x=674, y=10)
@@ -82,9 +85,9 @@ class App:
         self.plot_au_canvas = tk.Canvas(self.au_frame, width=450, height=350, bg="#E6EEF2")
         self.plot_au_canvas.pack()
 
-        self.plot_au_label = tk.Label(self.plot_au_canvas, text="Nessun grafico delle action unit generato",
-                                      font=('Helvetica', 16, 'bold'), fg="#00356A", bg="#E6EEF2")
-        self.plot_au_label.place(x=20, y=160)
+        self.plot_au_label = tk.Label(self.plot_au_canvas, text="No action unit graph generated",
+                                      font=('Helvetica', 16, 'bold'), fg="#1F77B4", bg="#E6EEF2")
+        self.plot_au_label.place(x=70, y=160)
 
         self.plot_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=5, bg="#1F77B4")
         self.plot_frame.place(x=674, y=384)
@@ -92,9 +95,9 @@ class App:
         self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=450, height=350, bg="#E6EEF2")
         self.plot_pain_canvas.pack()
 
-        self.plot_pain_label = tk.Label(self.plot_pain_canvas, text="Nessun grafico del dolore generato",
-                                        font=('Helvetica', 16, 'bold'), fg="#00356A", bg="#E6EEF2")
-        self.plot_pain_label.place(x=50, y=160)
+        self.plot_pain_label = tk.Label(self.plot_pain_canvas, text="No pain graph generated",
+                                        font=('Helvetica', 16, 'bold'), fg="#1F77B4", bg="#E6EEF2")
+        self.plot_pain_label.place(x=103, y=160)
 
         self.menu_frame = tk.Frame(self.root, width=674, height=254, relief=tk.RIDGE, bg="#F0FAFF")
         self.menu_frame.place(x=0, y=504)
@@ -130,8 +133,8 @@ class App:
         self.video_label.place_forget()
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
                                                         filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
-                                                                                    "*.avi", "*.mkv", "*.webm",
-                                                                                    "*.m4v"])])
+                                                                                    "*.avi", "*.mkv", "*.webm", "*.m4v",
+                                                                                    "*.mpg", "*.mpeg"])])
         self.frame_count = 0
         self.start_time = time.time()
         self.cap = cv2.VideoCapture(self.video_path)
