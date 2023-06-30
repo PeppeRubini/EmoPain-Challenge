@@ -1,5 +1,8 @@
+import concurrent
 import threading
 import tkinter as tk
+from io import BytesIO
+
 import cv2
 from PIL import Image, ImageTk
 from feat import Detector
@@ -115,11 +118,9 @@ class App:
         self.frame = None
         self.frame_list = []
         self.plotting_au = False
-        self.plotting_pain = False
         self.pain = None
         self.au_row = None
         self.df_au = pd.DataFrame(columns=au_r_list)
-        self.n_extracted_feature = 0
         self.extracting_feature = False
         self.n_prediction = 0
 
@@ -142,13 +143,19 @@ class App:
         self.show_frame(self.start_time)
 
     def plot_au(self):
+        # todo errore Fail to allocate bitmap dovrebbe partire da qui
         plt.bar(au_list, self.au_row)
         plt.title('Action Units')
-        plt.savefig('./graphs/au_bar_graph.png')
+        plt.ylim(0, 5)
+        plt.yscale('linear')
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png')
+        # plt.savefig('./graphs/au_bar_graph.png')
         plt.close()
 
         self.plot_au_label.place_forget()
-        self.image_au = Image.open('./graphs/au_bar_graph.png')
+        # self.image_au = Image.open('./graphs/au_bar_graph.png')
+        self.image_au = Image.open(buffer)
         self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
         self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
         self.plot_au_canvas.image = self.photo_au
@@ -156,20 +163,18 @@ class App:
     def feature_extraction(self):
         try:
             self.extracting_feature = True
-            # self.df_au = pd.DataFrame(columns=au_r_list)
             frame = self.frame_list.pop()
-            # print(f"lista dopo pop: {len(self.frame_list)}")
             faces = detector.detect_faces(frame, threshold=0.5)
             landmarks = detector.detect_landmarks(frame, faces)
             aus = detector.detect_aus(frame, landmarks)
             self.au_row = np.delete(aus[0][0] * 5, indices)
-            threading.Thread(target=self.plot_au).start()
+            #threading.Thread(target=self.plot_au).start()
+            concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(self.plot_au)
+
             self.df_au.loc[len(self.df_au)] = self.au_row
-            self.n_extracted_feature += 1
-            print(f"****feature estratte {self.n_extracted_feature}")
-            if self.n_extracted_feature == 150:
+            print(f"****feature estratte {self.df_au.shape[0]}")
+            if self.df_au.shape[0] == 150:
                 threading.Thread(target=self.predict).start()
-                self.n_extracted_feature = 0
             self.extracting_feature = False
         except:
             print('Error in pipeline of pain intensity extraction')
@@ -187,20 +192,26 @@ class App:
         self.frame_count_list.append(self.n_prediction)
 
         plt.figure()
-        plt.plot(self.frame_count_list, self.pain_list)
+        plt.plot(self.frame_count_list, self.pain_list, marker='o')
+        plt.xlim(left=1)
+        plt.xscale('linear')
         plt.ylim([0, 3])
-        plt.xlabel('frame')
+        plt.xlabel('prediction')
         plt.ylabel('pain')
         plt.grid(True)
-        plt.savefig('./graphs/pain_graph.png')
+        buffer = BytesIO()
+        plt.savefig(buffer, format='png')
+        # plt.savefig('./graphs/pain_graph.png')
         plt.close()
 
         self.plot_pain_label.place_forget()
-        self.image_g = Image.open('./graphs/pain_graph.png')
+        # self.image_g = Image.open('./graphs/pain_graph.png')
+        self.image_g = Image.open(buffer)
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
         self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
         self.plot_pain_canvas.image = self.photo_g
-        self.df_au = self.df_au.iloc[0:0]
+        # self.df_au = self.df_au.iloc[0:0]
+        self.df_au = pd.DataFrame(columns=au_r_list)
 
     def show_frame(self, st):
         # start_time = time.time()
@@ -212,7 +223,6 @@ class App:
         except:
             print("Frame finished")
         self.frame_count += 1
-        plotting = True
         if ret:
             self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
             self.image = Image.fromarray(self.frame)
@@ -223,12 +233,12 @@ class App:
             elapsed_time = time.time() - st
             fps = self.frame_count / elapsed_time
             self.fps_label.config(text=f"FPS: {fps:.2f}")
-            # print(f"lista prima del thread: {len(self.frame_list)}")
             # Update the canvas with the new frame
             self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
             if not self.extracting_feature:
                 threading.Thread(target=self.feature_extraction).start()
-            # print(f"lista {len(self.frame_list)}")
+                #concurrent.futures.ThreadPoolExecutor(max_workers=1).submit(self.feature_extraction())
+
             # Schedule the next frame update
             self.video_canvas.after(15, self.show_frame, self.start_time)
 
