@@ -114,13 +114,14 @@ class App:
         # aggiunte per thread
         self.frame = None
         self.frame_list = []
-        self.predicting = False
         self.plotting_au = False
         self.plotting_pain = False
         self.pain = None
         self.au_row = None
-        self.df_au = None
-        self.n_pred = 0
+        self.df_au = pd.DataFrame(columns=au_r_list)
+        self.n_extracted_feature = 0
+        self.extracting_feature = False
+        self.n_prediction = 0
 
     def open_webcam(self):
         self.video_label.place_forget()
@@ -133,8 +134,8 @@ class App:
         self.video_label.place_forget()
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
                                                         filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
-                                                                                    "*.avi", "*.mkv", "*.webm", "*.m4v",
-                                                                                    "*.mpg", "*.mpeg"])])
+                                                                                    "*.avi", "*.mkv", "*.webm",
+                                                                                    "*.m4v"])])
         self.frame_count = 0
         self.start_time = time.time()
         self.cap = cv2.VideoCapture(self.video_path)
@@ -154,37 +155,36 @@ class App:
 
     def feature_extraction(self):
         try:
-            self.predicting = True
-            self.df_au = pd.DataFrame(columns=au_r_list)
-            for i in range(150):
-                frame = self.frame_list.pop()
-                # print(f"lista dopo pop: {len(self.frame_list)}")
-                faces = detector.detect_faces(frame, threshold=0.5)
-                landmarks = detector.detect_landmarks(frame, faces)
-                aus = detector.detect_aus(frame, landmarks)
-                self.au_row = np.delete(aus[0][0] * 5, indices)
-                threading.Thread(target=self.plot_au).start()
-                self.df_au.loc[len(self.df_au)] = self.au_row
-                print(f"feature estratte {i + 1}")
-            print("effettuo predizione")
-            threading.Thread(target=self.predict).start()
+            self.extracting_feature = True
+            # self.df_au = pd.DataFrame(columns=au_r_list)
+            frame = self.frame_list.pop()
+            # print(f"lista dopo pop: {len(self.frame_list)}")
+            faces = detector.detect_faces(frame, threshold=0.5)
+            landmarks = detector.detect_landmarks(frame, faces)
+            aus = detector.detect_aus(frame, landmarks)
+            self.au_row = np.delete(aus[0][0] * 5, indices)
+            threading.Thread(target=self.plot_au).start()
+            self.df_au.loc[len(self.df_au)] = self.au_row
+            self.n_extracted_feature += 1
+            # print(f"****feature estratte {self.n_extracted_feature}")
+            if self.n_extracted_feature == 150:
+                threading.Thread(target=self.predict).start()
+                self.n_extracted_feature = 0
+            self.extracting_feature = False
         except:
             print('Error in pipeline of pain intensity extraction')
-            self.plotting_pain = False
-            self.predicting = False
+            self.extracting_feature = False
 
     def predict(self):
-        print("nel thread predizione")
         a = self.df_au.to_numpy()
         a = a.reshape(1, 150, 17)
         pain = model.predict(a)
+        self.n_prediction += 1
         print(pain[0][0])
         # todo rivedere grafico
-        self.predicting = False
-        self.n_pred += 1
         self.pain_label.config(text=f"PAIN LEVEL: {float(pain[0][0]):.2f}")
         self.pain_list.append(pain[0][0])
-        self.frame_count_list.append(self.n_pred)
+        self.frame_count_list.append(self.n_prediction)
 
         plt.figure()
         plt.plot(self.frame_count_list, self.pain_list)
@@ -200,6 +200,9 @@ class App:
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
         self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
         self.plot_pain_canvas.image = self.photo_g
+        # todo rivedere
+        self.df_au = None
+        self.df_au = pd.DataFrame(columns=au_r_list)
 
     def show_frame(self, st):
         # start_time = time.time()
@@ -218,18 +221,16 @@ class App:
             self.photo = ImageTk.PhotoImage(self.image)
 
             self.frame_list.append(self.frame)
-
+            # print(f"frame estratti {self.frame_count}")
             elapsed_time = time.time() - st
             fps = self.frame_count / elapsed_time
             self.fps_label.config(text=f"FPS: {fps:.2f}")
             # print(f"lista prima del thread: {len(self.frame_list)}")
             # Update the canvas with the new frame
             self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
-            if self.frame_count % 150 == 0:
-                print("estratti 150 frame")
-                if not self.predicting:
-                    threading.Thread(target=self.feature_extraction).start()
-
+            if not self.extracting_feature:
+                threading.Thread(target=self.feature_extraction).start()
+            # print(f"lista {len(self.frame_list)}")
             # Schedule the next frame update
             self.video_canvas.after(15, self.show_frame, self.start_time)
 
