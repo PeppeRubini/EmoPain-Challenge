@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from tensorflow import keras
 import warnings
 from matplotlib import use
+from collections import deque
 
 use('agg')
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -116,11 +117,11 @@ class App:
 
         # aggiunte per thread
         self.frame = None
-        self.frame_list = []
+        self.frame_queue = deque()
         self.plotting_au = False
         self.pain = None
         self.au_row = None
-        self.au_row_list = []
+        self.au_row_queue = deque()
         self.df_au = pd.DataFrame(columns=au_r_list)
         self.extracting_feature = False
         self.n_prediction = 0
@@ -144,7 +145,7 @@ class App:
         self.show_frame(self.start_time)
 
     def plot_au(self):
-        plt.bar(au_list, self.au_row_list.pop(0))
+        plt.bar(au_list, self.au_row_queue.popleft())
         plt.title('Action Units')
         plt.ylim(0, 5)
         plt.yscale('linear')
@@ -162,13 +163,13 @@ class App:
     def feature_extraction(self):
         try:
             self.extracting_feature = True
-            frame = self.frame_list.pop(0)
+            frame = self.frame_queue.popleft()
             faces = detector.detect_faces(frame, threshold=0.5)
             landmarks = detector.detect_landmarks(frame, faces)
             aus = detector.detect_aus(frame, landmarks)
             self.au_row = np.delete(aus[0][0] * 5, indices)
-            self.au_row_list.append(self.au_row)
-            if len(self.au_row_list) > 0 and not self.plotting_au:
+            self.au_row_queue.append(self.au_row)
+            if len(self.au_row_queue) > 0 and not self.plotting_au:
                 self.plotting_au = True
                 threading.Thread(target=self.plot_au).start()
             self.df_au.loc[len(self.df_au)] = self.au_row
@@ -224,7 +225,7 @@ class App:
             self.image = Image.fromarray(self.frame)
             self.photo = ImageTk.PhotoImage(self.image)
 
-            self.frame_list.append(self.frame)
+            self.frame_queue.append(self.frame)
             # print(f"frame estratti {self.frame_count}")
             elapsed_time = time.time() - st
             fps = self.frame_count / elapsed_time
