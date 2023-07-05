@@ -24,6 +24,8 @@ face_model = "retinaface"
 landmark_model = "mobilenet"
 au_model = "xgb"
 indices = [8, 15, 18]
+time_step = 90
+overlapping = 0.5
 
 
 def make_4_3(frame):
@@ -127,6 +129,10 @@ class App:
         self.n_prediction = 0
 
     def open_webcam(self):
+        self.frame_queue = deque()
+        self.au_row_queue = deque()
+        self.df_au = pd.DataFrame(columns=au_r_list)
+        self.n_prediction = 0
         self.video_label.place_forget()
         self.frame_count = 0
         self.start_time = time.time()
@@ -134,6 +140,10 @@ class App:
         self.show_frame(self.start_time)
 
     def open_video(self):
+        self.frame_queue = deque()
+        self.au_row_queue = deque()
+        self.df_au = pd.DataFrame(columns=au_r_list)
+        self.n_prediction = 0
         self.video_label.place_forget()
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
                                                         filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
@@ -172,9 +182,10 @@ class App:
             if len(self.au_row_queue) > 0 and not self.plotting_au:
                 self.plotting_au = True
                 threading.Thread(target=self.plot_au).start()
-            self.df_au.loc[len(self.df_au)] = self.au_row
-            print(f"****feature estratte {self.df_au.shape[0]}")
-            if self.df_au.shape[0] == 150:
+            self.df_au = pd.concat([self.df_au, pd.DataFrame(self.au_row, index=au_r_list).transpose()], axis=0,
+                                   ignore_index=True)
+            # print(f"****feature estratte {self.df_au.shape[0]}")
+            if self.df_au.shape[0] == time_step:
                 threading.Thread(target=self.predict).start()
             self.extracting_feature = False
         except:
@@ -183,7 +194,7 @@ class App:
 
     def predict(self):
         a = self.df_au.to_numpy()
-        a = a.reshape(1, 150, 17)
+        a = a.reshape(1, time_step, 17)
         pain = model.predict(a)
         self.n_prediction += 1
         print(pain[0][0])
@@ -208,7 +219,7 @@ class App:
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
         self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
         self.plot_pain_canvas.image = self.photo_g
-        self.df_au = pd.DataFrame(columns=au_r_list)
+        self.df_au.drop(index=self.df_au.index[:int(time_step*overlapping)], axis=0, inplace=True)
 
     def show_frame(self, st):
         # start_time = time.time()
@@ -240,7 +251,7 @@ class App:
             self.video_canvas.after_idle(self.show_frame, self.start_time)
 
 
-model = keras.models.load_model('pain_model/modello150.h5')
+model = keras.models.load_model('pain_model/modello90-05_1.h5')
 detector = Detector(face_model=face_model, landmark_model=landmark_model, au_model=au_model)
 root = tk.Tk()
 app = App(root)
