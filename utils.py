@@ -1,5 +1,21 @@
+import numpy as np
+import pandas as pd
+import os
+import matplotlib.pyplot as plt
+
+
+def label_dict_bin(array):
+    d = {"0": 0, "1": 0}
+    for y in array:
+        if y == 0:
+            d["0"] += 1
+        else:
+            d["1"] += 1
+    return d
+
+
 def label_dict(array):
-    d = {"0": 0, "1": 0, "2": 0, "3": 0, "4": 0, "5": 0, "6": 0, "7": 0, "8": 0, "9": 0, "10": 0}
+    d = {"0": 0, "1": 0, "2": 0, "3": 0}
     for y in array:
         if y == 0:
             d["0"] += 1
@@ -9,40 +25,48 @@ def label_dict(array):
             d["2"] += 1
         elif y == 3:
             d["3"] += 1
-        elif y == 4:
-            d["4"] += 1
-        elif y == 5:
-            d["5"] += 1
-        elif y == 6:
-            d["6"] += 1
-        elif y == 7:
-            d["7"] += 1
-        elif y == 8:
-            d["8"] += 1
-        elif y == 9:
-            d["9"] += 1
-        elif y == 10:
-            d["10"] += 1
     return d
+
+
+def make_step_dataset(path_dataset, step, overlapping_rate):
+    X = []
+    Y = []
+    for file in os.listdir(path_dataset):
+        df_label = pd.DataFrame()
+        df_geo = pd.DataFrame()
+        table = pd.read_csv(path_dataset + file)
+        df_label = pd.concat([df_label, table.pop("pain_label")])
+        df_geo = pd.concat([df_geo, table])
+        x = df_geo.to_numpy()
+        y = df_label.to_numpy().astype(np.int64)
+        d = label_dict_bin(y)
+        tot = d.get("1") + d.get("0")
+        zero_rate = d.get('0') / tot
+        if zero_rate <= 0.50:
+            overlapping = int(step * overlapping_rate)
+            start = 0
+            end = start + step
+            while end < len(x):
+                l = x[start:end]
+                start = end - overlapping
+                end = start + step
+                X.append(l)
+                Y.append(y[end - overlapping])
+    return np.array(X), np.array(Y)
 
 
 def print_dict(d):
     for k, v in d.items():
-        # print(k, v)
-        print(v)
-
-
-import matplotlib.pyplot as plt
+        print(k, v)
+        # print(v)
 
 
 def pie_chart_lable(dictionary):
-    # Data to plot
     labels = []
     sizes = []
     for x, y in dictionary.items():
         labels.append(x)
         sizes.append(y)
-    # Plot
     plt.pie(sizes, labels=labels, autopct='%1.1f%%')
     plt.axis('equal')
     plt.show()
