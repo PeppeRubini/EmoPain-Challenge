@@ -1,14 +1,14 @@
 import tkinter as tk
 from PIL import ImageTk, Image
 from lstm_gui import lstm_gui
-from utils import create_button
+from utils import center_window, create_button
 
 
 class home_gui:
     def __init__(self, root):
         self.root = root
         self.root.title("Pain Detector")
-        self.root.geometry("450x200")
+        center_window(self.root, 450, 200)
         self.root.configure(bg='#F0FAFF')
         self.root.resizable(False, False)
 

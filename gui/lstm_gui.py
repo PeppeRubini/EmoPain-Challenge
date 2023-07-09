@@ -12,7 +12,7 @@ from tensorflow import keras
 import warnings
 from matplotlib import use
 from collections import deque
-from utils import create_button
+from utils import center_window, create_button
 
 use('agg')
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -26,7 +26,8 @@ face_model = "retinaface"
 landmark_model = "mobilenet"
 au_model = "xgb"
 indices = [8, 15, 18]
-
+time_step = 90
+overlapping = 0.5
 
 def make_4_3(frame):
     if frame.shape[0] > frame.shape[1]:
@@ -55,7 +56,7 @@ class lstm_gui:
         self.start_time = None
         self.root = root
         self.root.title("Pain Detector")
-        self.root.geometry("1132x785")
+        center_window(self.root, 1132, 785)
         self.root.configure(bg='#F0FAFF')
         self.root.resizable(False, False)
 
@@ -170,9 +171,10 @@ class lstm_gui:
             if len(self.au_row_queue) > 0 and not self.plotting_au:
                 self.plotting_au = True
                 threading.Thread(target=self.plot_au).start()
-            self.df_au.loc[len(self.df_au)] = self.au_row
-            print(f"****feature estratte {self.df_au.shape[0]}")
-            if self.df_au.shape[0] == 90:
+            self.df_au = pd.concat([self.df_au, pd.DataFrame(self.au_row, index=au_r_list).transpose()], axis=0,
+                                   ignore_index=True)
+            # print(f"****feature estratte {self.df_au.shape[0]}")
+            if self.df_au.shape[0] == time_step:
                 threading.Thread(target=self.predict).start()
             self.extracting_feature = False
         except:
@@ -181,7 +183,7 @@ class lstm_gui:
 
     def predict(self):
         a = self.df_au.to_numpy()
-        a = a.reshape(1, 90, 17)
+        a = a.reshape(1, time_step, 17)
         pain = model.predict(a)
         self.n_prediction += 1
         print(pain[0][0])
@@ -205,7 +207,7 @@ class lstm_gui:
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
         self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
         self.plot_pain_canvas.image = self.photo_g
-        self.df_au = pd.DataFrame(columns=au_r_list)
+        self.df_au.drop(index=self.df_au.index[:int(time_step * overlapping)], axis=0, inplace=True)
 
     def show_frame(self, st):
         # start_time = time.time()
