@@ -1,8 +1,6 @@
 import tkinter as tk
-from PIL import ImageTk, Image
 from lstm_gui import lstm_gui
 from utils import center_window, create_button
-
 
 class home_gui:
     def __init__(self, root):

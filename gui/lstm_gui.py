@@ -13,6 +13,7 @@ import warnings
 from matplotlib import use
 from collections import deque
 from utils import center_window, create_button
+import math
 
 use('agg')
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -22,12 +23,51 @@ au_r_list = ['AU01_r', 'AU02_r', 'AU04_r', 'AU05_r', 'AU06_r', 'AU07_r',
              'AU09_r', 'AU10_r', 'AU12_r', 'AU14_r', 'AU15_r', 'AU17_r',
              'AU20_r', 'AU23_r', 'AU25_r', 'AU26_r', 'AU45_r']
 au_list = ['01', '02', '04', '05', '06', '07', '09', '10', '12', '14', '15', '17', '20', '23', '25', '26', '45']
-face_model = "retinaface"
-landmark_model = "mobilenet"
+face_model = "faceboxes"
+landmark_model = "mobilefacenet"
 au_model = "xgb"
 indices = [8, 15, 18]
 time_step = 90
 overlapping = 0.5
+
+
+# todo NUOVO
+def gauge_chart(prediction):
+    LOW = "#8fbbd9"
+    MEDIUM = "#629fca"
+    HIGH = "#1f77b4"
+
+    colors = [LOW, MEDIUM, HIGH]
+    values = [0, 1, 2, 3]
+
+    fig = plt.figure(figsize=(5, 5))  # immagine a 18x18 inches
+    ax = fig.add_subplot(projection="polar")
+    ax.set_theta_zero_location("W")
+    ax.set_theta_direction(-1)
+
+    ax.bar(x=[0, math.pi/3, 2*(math.pi/3)], width=1.05, height=0.5, bottom=2,
+           linewidth=3, edgecolor="white",
+           color=colors, align="edge")
+
+    # label per ogni fascia
+    for loc, val in zip([0, math.pi/3, 2*(math.pi/3)-0.02, math.pi], values):
+        ax.annotate(val, xy=(loc, 2.5), ha="right" if val < 2 else "left")
+
+    # indicatore
+    plt.annotate(f'{prediction:.2f}', xytext=(0, 0), xy=((3.14 / 3) * prediction, 2.0),
+                 arrowprops=dict(arrowstyle="wedge, tail_width=0.5", color="#144c73", shrinkA=0),
+                 bbox=dict(boxstyle="circle", facecolor="#144c73", linewidth=0),
+                 fontsize=10, color="white", ha="center"
+                 )
+
+    ax.set_axis_off()
+
+    buffer_gauge = BytesIO()
+    plt.savefig(buffer_gauge, format='png')
+    plt.close()
+
+    return buffer_gauge
+
 
 def make_4_3(frame):
     if frame.shape[0] > frame.shape[1]:
@@ -41,6 +81,7 @@ def make_4_3(frame):
 
 class lstm_gui:
     def __init__(self, root):
+        root.protocol("WM_DELETE_WINDOW", root.quit)
         self.pain_list = []
         self.frame_count_list = []
         self.frame_count = 0
@@ -98,6 +139,16 @@ class lstm_gui:
                                         font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
         self.plot_pain_label.place(x=103, y=160)
 
+
+        self.gauge_frame = tk.Frame(self.root, width=640, height=220, relief=tk.RIDGE, borderwidth=3, bg='#1F77B4')
+        self.gauge_frame.place(x=7, y=548)
+        self.gauge_canvas = tk.Canvas(self.gauge_frame, width=640, height=220, bg='#E6EEF2')
+        self.gauge_canvas.pack()
+
+        self.gauge_label = tk.Label(self.gauge_canvas, text="No prediction generated",
+                                        font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
+        self.gauge_label.place(x=200, y=100)
+
         # aggiunte per thread
         self.frame = None
         self.frame_queue = deque()
@@ -109,24 +160,34 @@ class lstm_gui:
         self.extracting_feature = False
         self.n_prediction = 0
 
-    def open_webcam(self):
+    def reinitialize(self):
+        self.plot_au_canvas.delete('all')
+        self.plot_pain_canvas.delete('all')
+        self.gauge_canvas.delete('all')
+
+        self.plot_au_label.place(x=70, y=160)
+        self.plot_pain_label.place(x=103, y=160)
+        self.gauge_label.place(x=200, y=100)
+
+        self.pain_list = []
+        self.frame_count_list = []
+
         self.frame_queue = deque()
         self.au_row_queue = deque()
+
         self.df_au = pd.DataFrame(columns=au_r_list)
         self.n_prediction = 0
 
+    def open_webcam(self):
         self.video_label.place_forget()
         self.frame_count = 0
         self.start_time = time.time()
         self.cap = cv2.VideoCapture(0)
+        self.reinitialize()
         self.show_frame(self.start_time)
 
-    def open_video(self):
-        self.frame_queue = deque()
-        self.au_row_queue = deque()
-        self.df_au = pd.DataFrame(columns=au_r_list)
-        self.n_prediction = 0
 
+    def open_video(self):
         self.video_label.place_forget()
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
                                                         filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
@@ -135,6 +196,7 @@ class lstm_gui:
         self.frame_count = 0
         self.start_time = time.time()
         self.cap = cv2.VideoCapture(self.video_path)
+        self.reinitialize()
         self.show_frame(self.start_time)
 
     def change_to_svr(self):
@@ -182,14 +244,26 @@ class lstm_gui:
             self.extracting_feature = False
 
     def predict(self):
+        # todo NUOVO
+        print(self.pain_list)
+        # controlla se la lista è vuota
+        if not self.pain_list:
+            current_value = 0
+        else:
+            current_value = self.pain_list[len(self.pain_list) - 1]
+
         a = self.df_au.to_numpy()
         a = a.reshape(1, time_step, 17)
         pain = model.predict(a)
         self.n_prediction += 1
         print(pain[0][0])
+
+        prediction = round(pain[0][0], 2)
+
         self.pain_list.append(pain[0][0])
         self.frame_count_list.append(self.n_prediction)
 
+        # grafico pain label
         plt.figure()
         plt.plot(self.frame_count_list, self.pain_list, marker='o')
         plt.xlim(left=1)
@@ -201,13 +275,42 @@ class lstm_gui:
         buffer = BytesIO()
         plt.savefig(buffer, format='png')
         plt.close()
-
         self.plot_pain_label.place_forget()
         self.image_g = Image.open(buffer)
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
         self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
         self.plot_pain_canvas.image = self.photo_g
+
+        # grafico pain label (gauge)
+        # todo NUOVO
+        step = abs(current_value - prediction) / 10
+        if current_value > prediction:
+            step *= -1
+
+        self.gauge_label.place_forget()
+
+        for x in np.arange(current_value, prediction, step):
+            """if x == current_value + (9 * step):
+                self.image_gauge = Image.open(gauge_chart(prediction))
+            elif x == prediction - (9 * step):
+                self.image_gauge = Image.open(gauge_chart(prediction))
+            else:
+                self.image_gauge = Image.open(gauge_chart(x))"""
+            self.image_gauge = Image.open(gauge_chart(x))
+            width, height = self.image_gauge.size
+            self.image_gauge = self.image_gauge.crop((0, 0, width, height / 2 + 75))  # crop: left, upper, right, lower corners of the box
+            layer = Image.new("RGB", (640, 220), (255, 255, 255))
+            layer.paste(self.image_gauge,tuple(map(lambda x: int((x[0] - x[1]) / 2), zip((640, 220), self.image_gauge.size))))
+            self.image_gauge = layer
+            self.photo_gauge = ImageTk.PhotoImage(self.image_gauge)
+            self.gauge_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_gauge)
+            self.gauge_canvas.image = self.photo_gauge
+
         self.df_au.drop(index=self.df_au.index[:int(time_step * overlapping)], axis=0, inplace=True)
+
+
+
+
 
     def show_frame(self, st):
         # start_time = time.time()
