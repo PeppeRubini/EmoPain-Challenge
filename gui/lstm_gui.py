@@ -231,7 +231,7 @@ class lstm_gui:
             aus = detector.detect_aus(frame, landmarks)
             self.au_row = np.delete(aus[0][0] * 5, indices)
             self.au_row_queue.append(self.au_row)
-            if len(self.au_row_queue) > 0 and not self.plotting_au and not self.animation:
+            if len(self.au_row_queue) > 0 and not self.plotting_au:
                 self.plotting_au = True
                 threading.Thread(target=self.plot_au).start()
             self.df_au = pd.concat([self.df_au, pd.DataFrame(self.au_row, index=au_r_list).transpose()], axis=0,
