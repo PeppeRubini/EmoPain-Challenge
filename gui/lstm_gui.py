@@ -31,7 +31,6 @@ time_step = 90
 overlapping = 0.5
 
 
-# todo NUOVO
 def gauge_chart(prediction):
     LOW = "#8fbbd9"
     MEDIUM = "#629fca"
@@ -45,12 +44,12 @@ def gauge_chart(prediction):
     ax.set_theta_zero_location("W")
     ax.set_theta_direction(-1)
 
-    ax.bar(x=[0, math.pi/3, 2*(math.pi/3)], width=1.05, height=0.5, bottom=2,
+    ax.bar(x=[0, math.pi / 3, 2 * (math.pi / 3)], width=1.05, height=0.5, bottom=2,
            linewidth=3, edgecolor="white",
            color=colors, align="edge")
 
     # label per ogni fascia
-    for loc, val in zip([0, math.pi/3, 2*(math.pi/3)-0.02, math.pi], values):
+    for loc, val in zip([0, math.pi / 3, 2 * (math.pi / 3) - 0.02, math.pi], values):
         ax.annotate(val, xy=(loc, 2.5), ha="right" if val < 2 else "left")
 
     # indicatore
@@ -65,7 +64,6 @@ def gauge_chart(prediction):
     buffer_gauge = BytesIO()
     plt.savefig(buffer_gauge, format='png')
     plt.close()
-
     return buffer_gauge
 
 
@@ -139,14 +137,13 @@ class lstm_gui:
                                         font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
         self.plot_pain_label.place(x=103, y=160)
 
-
         self.gauge_frame = tk.Frame(self.root, width=640, height=220, relief=tk.RIDGE, borderwidth=3, bg='#1F77B4')
         self.gauge_frame.place(x=7, y=548)
         self.gauge_canvas = tk.Canvas(self.gauge_frame, width=640, height=220, bg='#E6EEF2')
         self.gauge_canvas.pack()
 
         self.gauge_label = tk.Label(self.gauge_canvas, text="No prediction generated",
-                                        font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
+                                    font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
         self.gauge_label.place(x=200, y=100)
 
         # aggiunte per thread
@@ -159,6 +156,7 @@ class lstm_gui:
         self.df_au = pd.DataFrame(columns=au_r_list)
         self.extracting_feature = False
         self.n_prediction = 0
+        self.animation = False
 
     def reinitialize(self):
         self.plot_au_canvas.delete('all')
@@ -186,7 +184,6 @@ class lstm_gui:
         self.reinitialize()
         self.show_frame(self.start_time)
 
-
     def open_video(self):
         self.video_label.place_forget()
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
@@ -206,6 +203,10 @@ class lstm_gui:
         self.app = SVR(self.root)"""
 
     def plot_au(self):
+        while self.animation:
+            time.sleep(0.1)
+            if not self.animation:
+                break
         plt.bar(au_list, self.au_row_queue.popleft())
         plt.title('Action Units')
         plt.ylim(0, 5)
@@ -214,12 +215,12 @@ class lstm_gui:
         plt.savefig(buffer, format='png')
         plt.close()
 
+        self.plotting_au = False
         self.plot_au_label.place_forget()
         self.image_au = Image.open(buffer)
         self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
         self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
         self.plot_au_canvas.image = self.photo_au
-        self.plotting_au = False
 
     def feature_extraction(self):
         try:
@@ -230,7 +231,7 @@ class lstm_gui:
             aus = detector.detect_aus(frame, landmarks)
             self.au_row = np.delete(aus[0][0] * 5, indices)
             self.au_row_queue.append(self.au_row)
-            if len(self.au_row_queue) > 0 and not self.plotting_au:
+            if len(self.au_row_queue) > 0 and not self.plotting_au and not self.animation:
                 self.plotting_au = True
                 threading.Thread(target=self.plot_au).start()
             self.df_au = pd.concat([self.df_au, pd.DataFrame(self.au_row, index=au_r_list).transpose()], axis=0,
@@ -244,7 +245,6 @@ class lstm_gui:
             self.extracting_feature = False
 
     def predict(self):
-        # todo NUOVO
         print(self.pain_list)
         # controlla se la lista è vuota
         if not self.pain_list:
@@ -271,6 +271,7 @@ class lstm_gui:
         plt.ylim([0, 3])
         plt.xlabel('prediction')
         plt.ylabel('pain')
+        plt.title('Pain Trend')
         plt.grid(True)
         buffer = BytesIO()
         plt.savefig(buffer, format='png')
@@ -282,35 +283,35 @@ class lstm_gui:
         self.plot_pain_canvas.image = self.photo_g
 
         # grafico pain label (gauge)
-        # todo NUOVO
-        step = abs(current_value - prediction) / 10
+        n = 10
+        step = abs(current_value - prediction) / n
         if current_value > prediction:
             step *= -1
-
         self.gauge_label.place_forget()
-
+        i = 0
         for x in np.arange(current_value, prediction, step):
-            """if x == current_value + (9 * step):
-                self.image_gauge = Image.open(gauge_chart(prediction))
-            elif x == prediction - (9 * step):
-                self.image_gauge = Image.open(gauge_chart(prediction))
-            else:
-                self.image_gauge = Image.open(gauge_chart(x))"""
-            self.image_gauge = Image.open(gauge_chart(x))
-            width, height = self.image_gauge.size
-            self.image_gauge = self.image_gauge.crop((0, 0, width, height / 2 + 75))  # crop: left, upper, right, lower corners of the box
+            i += 1
+            if i == n:
+                x = prediction
+            while self.plotting_au:
+                time.sleep(0.1)
+                if not self.plotting_au:
+                    break
+            self.animation = True
+            image_gauge = Image.open(gauge_chart(x))
+            self.animation = False
+            width, height = image_gauge.size
+            image_gauge = image_gauge.crop(
+                (0, 0, width, height / 2 + 75))  # crop: left, upper, right, lower corners of the box
             layer = Image.new("RGB", (640, 220), (255, 255, 255))
-            layer.paste(self.image_gauge,tuple(map(lambda x: int((x[0] - x[1]) / 2), zip((640, 220), self.image_gauge.size))))
-            self.image_gauge = layer
-            self.photo_gauge = ImageTk.PhotoImage(self.image_gauge)
-            self.gauge_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_gauge)
-            self.gauge_canvas.image = self.photo_gauge
-
+            layer.paste(image_gauge,
+                        tuple(map(lambda x: int((x[0] - x[1]) / 2), zip((640, 220), image_gauge.size))))
+            image_gauge = layer
+            photo_gauge = ImageTk.PhotoImage(image_gauge)
+            self.gauge_canvas.create_image(0, 0, anchor=tk.NW, image=photo_gauge)
+            self.gauge_canvas.image = photo_gauge
+        self.animation = False
         self.df_au.drop(index=self.df_au.index[:int(time_step * overlapping)], axis=0, inplace=True)
-
-
-
-
 
     def show_frame(self, st):
         # start_time = time.time()
