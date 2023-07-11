@@ -1,5 +1,9 @@
 import tkinter as tk
 from PIL import Image, ImageTk
+import numpy as np
+import matplotlib.pyplot as plt
+import math
+from io import BytesIO
 
 
 def center_window(window, app_width, app_height):
@@ -25,3 +29,49 @@ def create_button(x, y, frame, img1, img2, cmd):
     button.bind("<Enter>", on_enter)
     button.bind("<Leave>", on_leave)
     button.place(x=x, y=y)
+
+
+def gauge_chart(prediction):
+    LOW = "#8fbbd9"
+    MEDIUM = "#629fca"
+    HIGH = "#1f77b4"
+
+    colors = [LOW, MEDIUM, HIGH]
+    values = [0, 1, 2, 3]
+
+    fig = plt.figure(figsize=(5, 5))  # immagine a 18x18 inches
+    ax = fig.add_subplot(projection="polar")
+    ax.set_theta_zero_location("W")
+    ax.set_theta_direction(-1)
+
+    ax.bar(x=[0, math.pi / 3, 2 * (math.pi / 3)], width=1.05, height=0.5, bottom=2,
+           linewidth=3, edgecolor="white",
+           color=colors, align="edge")
+
+    # label per ogni fascia
+    for loc, val in zip([0, math.pi / 3, 2 * (math.pi / 3) - 0.02, math.pi], values):
+        ax.annotate(val, xy=(loc, 2.5), ha="right" if val < 2 else "left")
+
+    # indicatore
+    plt.annotate(f'{prediction:.2f}', xytext=(0, 0), xy=((3.14 / 3) * prediction, 2.0),
+                 arrowprops=dict(arrowstyle="wedge, tail_width=0.5", color="#144c73", shrinkA=0),
+                 bbox=dict(boxstyle="circle", facecolor="#144c73", linewidth=0),
+                 fontsize=10, color="white", ha="center"
+                 )
+
+    ax.set_axis_off()
+
+    buffer_gauge = BytesIO()
+    plt.savefig(buffer_gauge, format='png')
+    plt.close()
+    return buffer_gauge
+
+
+def make_4_3(frame):
+    if frame.shape[0] > frame.shape[1]:
+        x = abs(frame.shape[1] - (int(frame.shape[1] * 3 / 4)))
+        new_frame = np.pad(frame, ((0, 0), (int(x * 2), int(x * 2)), (0, 0)), 'constant')
+    else:
+        y = abs((int((frame.shape[0] * 4 / 3) - frame.shape[0])))
+        new_frame = np.pad(frame, ((int(y / 2), int(y / 2)), (0, 0), (0, 0)), 'constant')
+    return new_frame
