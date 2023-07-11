@@ -139,12 +139,13 @@ class lstm_gui:
 
         self.gauge_frame = tk.Frame(self.root, width=640, height=220, relief=tk.RIDGE, borderwidth=3, bg='#1F77B4')
         self.gauge_frame.place(x=7, y=548)
+
         self.gauge_canvas = tk.Canvas(self.gauge_frame, width=640, height=220, bg='#E6EEF2')
         self.gauge_canvas.pack()
 
         self.gauge_label = tk.Label(self.gauge_canvas, text="No prediction generated",
                                     font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
-        self.gauge_label.place(x=200, y=100)
+        self.gauge_label.place(x=200, y=95)
 
         # aggiunte per thread
         self.frame = None
@@ -165,7 +166,7 @@ class lstm_gui:
 
         self.plot_au_label.place(x=70, y=160)
         self.plot_pain_label.place(x=103, y=160)
-        self.gauge_label.place(x=200, y=100)
+        self.gauge_label.place(x=200, y=95)
 
         self.pain_list = []
         self.frame_count_list = []
@@ -177,24 +178,27 @@ class lstm_gui:
         self.n_prediction = 0
 
     def open_webcam(self):
-        self.video_label.place_forget()
-        self.frame_count = 0
-        self.start_time = time.time()
-        self.cap = cv2.VideoCapture(0)
-        self.reinitialize()
-        self.show_frame(self.start_time)
+        cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
+        if cap.isOpened():
+            self.frame_count = 0
+            self.start_time = time.time()
+            self.cap = cv2.VideoCapture(0)
+            self.reinitialize()
+            self.show_frame(self.start_time)
+        else:
+            tk.messagebox.showerror("Error", "No webcam found")
 
     def open_video(self):
-        self.video_label.place_forget()
         self.video_path = tk.filedialog.askopenfilename(initialdir="/", title="Select a Video",
                                                         filetypes=[("Video files", ["*.mp4", "*.mov", "*.wmv", "*.flv",
                                                                                     "*.avi", "*.mkv", "*.webm",
                                                                                     "*.m4v"])])
-        self.frame_count = 0
-        self.start_time = time.time()
-        self.cap = cv2.VideoCapture(self.video_path)
-        self.reinitialize()
-        self.show_frame(self.start_time)
+        if self.video_path != "":
+            self.frame_count = 0
+            self.start_time = time.time()
+            self.cap = cv2.VideoCapture(self.video_path)
+            self.reinitialize()
+            self.show_frame(self.start_time)
 
     def change_to_svr(self):
         print("Hola")
@@ -204,7 +208,7 @@ class lstm_gui:
 
     def plot_au(self):
         while self.animation:
-            time.sleep(0.1)
+            time.sleep(0.001)
             if not self.animation:
                 break
         plt.bar(au_list, self.au_row_queue.popleft())
@@ -263,6 +267,10 @@ class lstm_gui:
         self.pain_list.append(pain[0][0])
         self.frame_count_list.append(self.n_prediction)
 
+        while self.plotting_au:
+            time.sleep(0.001)
+            if not self.plotting_au:
+                break
         # grafico pain label
         plt.figure()
         plt.plot(self.frame_count_list, self.pain_list, marker='o')
@@ -294,7 +302,7 @@ class lstm_gui:
             if i == n:
                 x = prediction
             while self.plotting_au:
-                time.sleep(0.1)
+                time.sleep(0.001)
                 if not self.plotting_au:
                     break
             self.animation = True
@@ -320,6 +328,7 @@ class lstm_gui:
             if self.frame.shape[1] / self.frame.shape[0] != 4 / 3:
                 self.frame = make_4_3(self.frame)
                 self.frame = cv2.resize(self.frame, (640, 480))
+            self.video_label.place_forget()
         except:
             print("Frame finished")
         self.frame_count += 1
