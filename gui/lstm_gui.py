@@ -1,3 +1,4 @@
+import os
 import threading
 import tkinter as tk
 from io import BytesIO
@@ -30,9 +31,14 @@ time_step = 90
 overlapping = 0.5
 
 
+def kill():
+    if tk.messagebox.askyesno("Pain Detector", "Are you sure you want to exit?"):
+        os.kill(os.getpid(), 0)
+
+
 class lstm_gui:
     def __init__(self, root):
-        root.protocol("WM_DELETE_WINDOW", root.quit)
+        root.protocol("WM_DELETE_WINDOW", kill)
         self.pain_list = []
         self.frame_count_list = []
         self.frame_count = 0
