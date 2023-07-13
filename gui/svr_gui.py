@@ -2,18 +2,15 @@ import threading
 import tkinter as tk
 from io import BytesIO
 import cv2
-from PIL import Image, ImageDraw, ImageFont, ImageTk
+from PIL import Image, ImageFont, ImageTk
 from feat import Detector
 import pandas as pd
 import numpy as np
-import time
 import matplotlib.pyplot as plt
 import warnings
 from matplotlib import use
 from joblib import load
-from collections import deque
-from utils import center_window, create_button, gauge_chart, make_4_3
-import math
+from utils import create_button, gauge_chart, make_4_3
 from lstm_gui import lstm_gui
 
 use('agg')
@@ -35,7 +32,7 @@ class svr_gui(lstm_gui):
         super().__init__(root)
         create_button(265, 5, self.menu_frame, 'image button.png', 'image button clicked.png', self.open_image)
         create_button(1000, 5, self.menu_frame, 'change to lstm button.png', 'change to lstm button clicked.png',
-                      self.change_to_lstm)
+                      lambda: [self.set_frame_switched(True), root.switch_frame("lstm_gui")])
 
     def feature_extraction(self):
         try:
@@ -74,13 +71,12 @@ class svr_gui(lstm_gui):
         self.pain_list.append(pain[0])
         self.frame_count_list.append(self.n_prediction)
 
-        """while self.plotting_au:
-            time.sleep(0.001)
-            if not self.plotting_au:
-                break"""
         # grafico pain label
         plt.figure()
-        plt.plot(self.frame_count_list, self.pain_list, marker='o')
+        if len(self.pain_list)<30:
+            plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
+        else:
+            plt.plot(self.frame_count_list, self.pain_list, linewidth=2)
         plt.xlim(left=1)
         plt.xscale('linear')
         plt.ylim([0, 3])
@@ -108,24 +104,13 @@ class svr_gui(lstm_gui):
             i += 1
             if i == n:
                 x = prediction
-            """while self.plotting_au:
-                time.sleep(0.001)
-                if not self.plotting_au:
-                    break"""
-            self.animation = True
-            image_gauge = Image.open(gauge_chart(x))
-            self.animation = False
-            width, height = image_gauge.size
-            image_gauge = image_gauge.crop(
-                (0, 0, width, height / 2 + 75))  # crop: left, upper, right, lower corners of the box
-            layer = Image.new("RGB", (640, 220), (255, 255, 255))
-            layer.paste(image_gauge,
-                        tuple(map(lambda x: int((x[0] - x[1]) / 2), zip((640, 220), image_gauge.size))))
-            image_gauge = layer
+
+            image_gauge = gauge_chart(x)
+
             photo_gauge = ImageTk.PhotoImage(image_gauge)
             self.gauge_canvas.create_image(0, 0, anchor=tk.NW, image=photo_gauge)
             self.gauge_canvas.image = photo_gauge
-        self.animation = False
+
         self.df_au.drop(self.df_au.index, inplace=True)
 
     def open_image(self):
@@ -154,10 +139,6 @@ class svr_gui(lstm_gui):
             if not self.extracting_feature:
                 threading.Thread(target=self.feature_extraction).start()
 
-    def change_to_lstm(self):
-        print("CIAO 2")
-        """self.root.withdraw()
-        lstm_gui(tk.Toplevel(root))"""
 
 
 model = load('../pain_model/svr.pkl')

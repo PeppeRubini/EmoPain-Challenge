@@ -36,8 +36,10 @@ def kill():
         os.kill(os.getpid(), 0)
 
 
-class lstm_gui:
+class lstm_gui(tk.Frame):
     def __init__(self, root):
+        tk.Frame.__init__(self, root, width=1132, height=785, bg='#F0FAFF')
+
         root.protocol("WM_DELETE_WINDOW", kill)
         self.pain_list = []
         self.frame_count_list = []
@@ -58,13 +60,15 @@ class lstm_gui:
         self.root.configure(bg='#F0FAFF')
         self.root.resizable(False, False)
 
+        self.frame_switched = False
+
         self.menu_frame = tk.Frame(self.root, width=1132, height=50, relief=tk.RIDGE, bg='#F0FAFF')
         self.menu_frame.place(x=0, y=0)
 
         create_button(5, 5, self.menu_frame, 'webcam button.png', 'webcam button clicked.png', self.open_webcam)
         create_button(135, 5, self.menu_frame, 'video button.png', 'video button clicked.png', self.open_video)
         create_button(1000, 5, self.menu_frame, 'change to svr button.png', 'change to svr button clicked.png',
-                      self.change_to_svr)
+                      lambda: [self.set_frame_switched(True), root.switch_frame("svr_gui")])
 
         self.video_frame = tk.Frame(self.root, width=640, height=480, relief=tk.RIDGE, borderwidth=3, bg='#1F77B4')
         self.video_frame.place(x=7, y=50)
@@ -116,7 +120,14 @@ class lstm_gui:
         self.df_au = pd.DataFrame(columns=au_r_list)
         self.extracting_feature = False
         self.n_prediction = 0
-        self.animation = False
+        self.trend = False
+
+        print(self.frame_queue)
+        print(self.df_au)
+
+    def set_frame_switched(self, boolean):
+        self.frame_switched = boolean
+
 
     def reinitialize(self):
         self.plot_au_canvas.delete('all')
@@ -159,16 +170,11 @@ class lstm_gui:
             self.reinitialize()
             self.show_frame(self.start_time)
 
-    def change_to_svr(self):
-        print("Hola")
-        """self.root.destroy()
-        self.root = tk.Tk()
-        self.app = SVR(self.root)"""
 
     def plot_au(self):
-        while self.animation:
+        while self.trend:
             time.sleep(0.001)
-            if not self.animation:
+            if not self.trend:
                 break
         plt.bar(au_list, self.au_row_queue.popleft())
         plt.title('Action Units')
@@ -229,9 +235,11 @@ class lstm_gui:
             time.sleep(0.001)
             if not self.plotting_au:
                 break
+
+        self.trend = True
         # grafico pain label
         plt.figure()
-        plt.plot(self.frame_count_list, self.pain_list, marker='o')
+        plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
         plt.xlim(left=1)
         plt.xscale('linear')
         plt.ylim([0, 3])
@@ -242,6 +250,7 @@ class lstm_gui:
         buffer = BytesIO()
         plt.savefig(buffer, format='png')
         plt.close()
+        self.trend = False
         self.plot_pain_label.place_forget()
         self.image_g = Image.open(buffer)
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
@@ -259,24 +268,13 @@ class lstm_gui:
             i += 1
             if i == n:
                 x = prediction
-            while self.plotting_au:
-                time.sleep(0.001)
-                if not self.plotting_au:
-                    break
-            self.animation = True
-            image_gauge = Image.open(gauge_chart(x))
-            self.animation = False
-            width, height = image_gauge.size
-            image_gauge = image_gauge.crop(
-                (0, 0, width, height / 2 + 75))  # crop: left, upper, right, lower corners of the box
-            layer = Image.new("RGB", (640, 220), (255, 255, 255))
-            layer.paste(image_gauge,
-                        tuple(map(lambda x: int((x[0] - x[1]) / 2), zip((640, 220), image_gauge.size))))
-            image_gauge = layer
+
+            image_gauge = gauge_chart(x)
+
             photo_gauge = ImageTk.PhotoImage(image_gauge)
             self.gauge_canvas.create_image(0, 0, anchor=tk.NW, image=photo_gauge)
             self.gauge_canvas.image = photo_gauge
-        self.animation = False
+
         self.df_au.drop(index=self.df_au.index[:int(time_step * overlapping)], axis=0, inplace=True)
 
     def show_frame(self, st):
@@ -307,8 +305,10 @@ class lstm_gui:
             # Schedule the next frame update
             # after_idle sembra essere più veloce di after
             # self.video_canvas.after(1, self.show_frame, self.start_time)
-            self.video_canvas.after_idle(self.show_frame, self.start_time)
+            if not self.frame_switched:
+                self.video_canvas.after_idle(self.show_frame, self.start_time)
 
 
 model = keras.models.load_model('../pain_model/modello90-05_1.h5')
 detector = Detector(face_model=face_model, landmark_model=landmark_model, au_model=au_model)
+
