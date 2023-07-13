@@ -1,4 +1,5 @@
 import threading
+import time
 import tkinter as tk
 from io import BytesIO
 import cv2
@@ -45,8 +46,7 @@ class svr_gui(lstm_gui):
             self.au_row_queue.append(self.au_row)
             if len(self.au_row_queue) > 0 and not self.plotting_au:
                 self.plotting_au = True
-                # threading.Thread(target=self.plot_au).start()
-                self.plot_au()
+                threading.Thread(target=self.plot_au).start()
             self.df_au = pd.concat([self.df_au, pd.DataFrame(self.au_row, index=au_r_list).transpose()], axis=0,
                                    ignore_index=True)
             threading.Thread(target=self.predict).start()
@@ -70,10 +70,14 @@ class svr_gui(lstm_gui):
 
         self.pain_list.append(pain[0])
         self.frame_count_list.append(self.n_prediction)
-
+        while self.plotting_au:
+            time.sleep(0.1)
+            if not self.plotting_au:
+                break
+        self.trend = True
         # grafico pain label
         plt.figure()
-        if len(self.pain_list)<30:
+        if len(self.pain_list) < 30:
             plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
         else:
             plt.plot(self.frame_count_list, self.pain_list, linewidth=2)
@@ -87,6 +91,8 @@ class svr_gui(lstm_gui):
         buffer = BytesIO()
         plt.savefig(buffer, format='png')
         plt.close()
+        self.trend = False
+
         self.plot_pain_label.place_forget()
         self.image_g = Image.open(buffer)
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
@@ -138,7 +144,6 @@ class svr_gui(lstm_gui):
             self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
             if not self.extracting_feature:
                 threading.Thread(target=self.feature_extraction).start()
-
 
 
 model = load('../pain_model/svr.pkl')

@@ -122,12 +122,8 @@ class lstm_gui(tk.Frame):
         self.n_prediction = 0
         self.trend = False
 
-        print(self.frame_queue)
-        print(self.df_au)
-
     def set_frame_switched(self, boolean):
         self.frame_switched = boolean
-
 
     def reinitialize(self):
         self.plot_au_canvas.delete('all')
@@ -170,10 +166,9 @@ class lstm_gui(tk.Frame):
             self.reinitialize()
             self.show_frame(self.start_time)
 
-
     def plot_au(self):
         while self.trend:
-            time.sleep(0.001)
+            time.sleep(0.1)
             if not self.trend:
                 break
         plt.bar(au_list, self.au_row_queue.popleft())
@@ -232,7 +227,7 @@ class lstm_gui(tk.Frame):
         self.frame_count_list.append(self.n_prediction)
 
         while self.plotting_au:
-            time.sleep(0.001)
+            time.sleep(0.1)
             if not self.plotting_au:
                 break
 
@@ -311,4 +306,3 @@ class lstm_gui(tk.Frame):
 
 model = keras.models.load_model('../pain_model/modello90-05_1.h5')
 detector = Detector(face_model=face_model, landmark_model=landmark_model, au_model=au_model)
-
