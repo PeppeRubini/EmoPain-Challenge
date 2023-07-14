@@ -44,6 +44,7 @@ class svr_gui(lstm_gui):
             aus = detector.detect_aus(frame, landmarks)
             self.au_row = np.delete(aus[0][0] * 5, indices)
             self.au_row_queue.append(self.au_row)
+            self.thread_number -= 1
             if len(self.au_row_queue) > 0 and not self.plotting_au:
                 self.plotting_au = True
                 threading.Thread(target=self.plot_au).start()
@@ -64,7 +65,7 @@ class svr_gui(lstm_gui):
 
         pain = model.predict(self.df_au.tail(1))
         self.n_prediction += 1
-        print(pain[0])
+        # print(pain[0])
 
         prediction = round(pain[0], 2)
 
@@ -118,6 +119,19 @@ class svr_gui(lstm_gui):
             self.gauge_canvas.image = photo_gauge
 
         self.df_au.drop(self.df_au.index, inplace=True)
+
+    def video_ended(self):
+        # print(f"****feature estratte {self.df_au.shape[0]}")
+        # print(f"frame estratti {self.frame_queue.__len__()}")
+        while self.frame_queue.__len__() > 0:
+            if self.thread_number <= 12:
+                threading.Thread(target=self.feature_extraction).start()
+                self.thread_number += 1
+            time.sleep(0.1)
+            if self.plotting_au:
+                time.sleep(0.1)
+            # print(f"****feature estratte {self.df_au.shape[0]}")
+            # print(f"frame estratti {self.frame_queue.__len__()}")
 
     def open_image(self):
         self.image_path = tk.filedialog.askopenfilename(initialdir="/", title="Select an Image",

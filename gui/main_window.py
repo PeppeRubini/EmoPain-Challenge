@@ -9,12 +9,13 @@ pages = {
     "svr_gui": svr_gui
 }
 
-# finestra principale
+
 class main_window(tk.Tk):
     def __init__(self):
         tk.Tk.__init__(self)
         self._frame = None
         self.switch_frame("home_gui")
+        self.attributes("-topmost", True)
 
     def switch_frame(self, page_name):
         """Destroys current frame and replaces it with a new one."""
@@ -24,6 +25,7 @@ class main_window(tk.Tk):
             self._frame.destroy()
         self._frame = new_frame
         self._frame.pack()
+
 
 if __name__ == "__main__":
     app = main_window()

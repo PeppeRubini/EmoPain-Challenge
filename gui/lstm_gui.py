@@ -33,7 +33,7 @@ overlapping = 0.5
 
 def kill():
     if tk.messagebox.askyesno("Pain Detector", "Are you sure you want to exit?"):
-        os.kill(os.getpid(), 0)
+        os._exit(1)
 
 
 class lstm_gui(tk.Frame):
@@ -121,6 +121,7 @@ class lstm_gui(tk.Frame):
         self.extracting_feature = False
         self.n_prediction = 0
         self.trend = False
+        self.thread_number = 0
 
     def set_frame_switched(self, boolean):
         self.frame_switched = boolean
@@ -195,6 +196,7 @@ class lstm_gui(tk.Frame):
             aus = detector.detect_aus(frame, landmarks)
             self.au_row = np.delete(aus[0][0] * 5, indices)
             self.au_row_queue.append(self.au_row)
+            self.thread_number -= 1
             if len(self.au_row_queue) > 0 and not self.plotting_au:
                 self.plotting_au = True
                 threading.Thread(target=self.plot_au).start()
@@ -215,11 +217,11 @@ class lstm_gui(tk.Frame):
         else:
             current_value = self.pain_list[len(self.pain_list) - 1]
 
-        a = self.df_au.to_numpy()
+        a = self.df_au[:90].to_numpy()
         a = a.reshape(1, time_step, 17)
         pain = model.predict(a)
         self.n_prediction += 1
-        print(pain[0][0])
+        # print(pain[0][0])
 
         prediction = round(pain[0][0], 2)
 
@@ -272,6 +274,19 @@ class lstm_gui(tk.Frame):
 
         self.df_au.drop(index=self.df_au.index[:int(time_step * overlapping)], axis=0, inplace=True)
 
+    def video_ended(self):
+        # print(f"****feature estratte {self.df_au.shape[0]}")
+        # print(f"frame estratti {self.frame_queue.__len__()}")
+        while self.frame_queue.__len__() > time_step:
+            if self.thread_number <= 12:
+                threading.Thread(target=self.feature_extraction).start()
+                self.thread_number += 1
+            time.sleep(0.1)
+            if self.plotting_au:
+                time.sleep(0.1)
+            # print(f"****feature estratte {self.df_au.shape[0]}")
+            # print(f"frame estratti {self.frame_queue.__len__()}")
+
     def show_frame(self, st):
         # start_time = time.time()
         ret, self.frame = self.cap.read()
@@ -282,6 +297,7 @@ class lstm_gui(tk.Frame):
             self.video_label.place_forget()
         except:
             print("Frame finished")
+            threading.Thread(target=self.video_ended).start()
         self.frame_count += 1
         if ret:
             self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
@@ -295,8 +311,9 @@ class lstm_gui(tk.Frame):
             # print(f"frame estratti {self.frame_count}")
             # Update the canvas with the new frame
             self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
-            if not self.extracting_feature:
+            if self.thread_number <= 12:
                 threading.Thread(target=self.feature_extraction).start()
+                self.thread_number += 1
             # Schedule the next frame update
             # after_idle sembra essere più veloce di after
             # self.video_canvas.after(1, self.show_frame, self.start_time)
@@ -304,5 +321,5 @@ class lstm_gui(tk.Frame):
                 self.video_canvas.after_idle(self.show_frame, self.start_time)
 
 
-model = keras.models.load_model('../pain_model/modello90-05_1.h5')
+model = keras.models.load_model('../pain_model/modello90-05_3.h5')
 detector = Detector(face_model=face_model, landmark_model=landmark_model, au_model=au_model)
