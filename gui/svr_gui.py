@@ -34,6 +34,7 @@ class svr_gui(lstm_gui):
         create_button(265, 5, self.menu_frame, 'image button.png', 'image button clicked.png', self.open_image)
         create_button(1000, 5, self.menu_frame, 'change to lstm button.png', 'change to lstm button clicked.png',
                       lambda: [self.set_frame_switched(True), root.switch_frame("lstm_gui")])
+        self.trend = False
 
     def feature_extraction(self):
         try:
@@ -61,9 +62,10 @@ class svr_gui(lstm_gui):
         if not self.pain_list:
             current_value = 0
         else:
-            current_value = self.pain_list[len(self.pain_list) - 1]
-
-        pain = model.predict(self.df_au.tail(1))
+            current_value = self.pain_list[-1]
+        if len(self.df_au) == 0:
+            return
+        pain = model.predict(self.df_au.head(1))
         self.n_prediction += 1
         # print(pain[0])
 
@@ -71,34 +73,30 @@ class svr_gui(lstm_gui):
 
         self.pain_list.append(pain[0])
         self.frame_count_list.append(self.n_prediction)
-        while self.plotting_au:
-            time.sleep(0.1)
-            if not self.plotting_au:
-                break
-        self.trend = True
         # grafico pain label
-        plt.figure()
-        if len(self.pain_list) < 30:
-            plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
-        else:
-            plt.plot(self.frame_count_list, self.pain_list, linewidth=2)
-        plt.xlim(left=1)
-        plt.xscale('linear')
-        plt.ylim([0, 3])
-        plt.xlabel('prediction')
-        plt.ylabel('pain')
-        plt.title('Pain Trend')
-        plt.grid(True)
-        buffer = BytesIO()
-        plt.savefig(buffer, format='png')
-        plt.close()
-        self.trend = False
-
-        self.plot_pain_label.place_forget()
-        self.image_g = Image.open(buffer)
-        self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
-        self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
-        self.plot_pain_canvas.image = self.photo_g
+        if not self.trend:
+            self.trend = True
+            plt.figure()
+            if len(self.pain_list) < 30:
+                plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
+            else:
+                plt.plot(self.frame_count_list, self.pain_list, linewidth=2)
+            plt.xlim(left=1)
+            plt.xscale('linear')
+            plt.ylim([0, 3])
+            plt.xlabel('prediction')
+            plt.ylabel('pain')
+            plt.title('Pain Trend')
+            plt.grid(True)
+            buffer = BytesIO()
+            plt.savefig(buffer, format='png')
+            plt.close()
+            self.plot_pain_label.place_forget()
+            self.image_g = Image.open(buffer)
+            self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
+            self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
+            self.plot_pain_canvas.image = self.photo_g
+            self.trend = False
 
         # grafico pain label (gauge)
         n = 2
@@ -121,17 +119,13 @@ class svr_gui(lstm_gui):
         self.df_au.drop(self.df_au.index, inplace=True)
 
     def video_ended(self):
-        # print(f"****feature estratte {self.df_au.shape[0]}")
-        # print(f"frame estratti {self.frame_queue.__len__()}")
-        while self.frame_queue.__len__() > 0:
+        while len(self.frame_queue) > 0:
             if self.thread_number <= 12:
                 threading.Thread(target=self.feature_extraction).start()
                 self.thread_number += 1
             time.sleep(0.1)
             if self.plotting_au:
                 time.sleep(0.1)
-            # print(f"****feature estratte {self.df_au.shape[0]}")
-            # print(f"frame estratti {self.frame_queue.__len__()}")
 
     def open_image(self):
         self.image_path = tk.filedialog.askopenfilename(initialdir="/", title="Select an Image",

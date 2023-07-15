@@ -120,7 +120,6 @@ class lstm_gui(tk.Frame):
         self.df_au = pd.DataFrame(columns=au_r_list)
         self.extracting_feature = False
         self.n_prediction = 0
-        self.trend = False
         self.thread_number = 0
 
     def set_frame_switched(self, boolean):
@@ -168,21 +167,25 @@ class lstm_gui(tk.Frame):
             self.show_frame(self.start_time)
 
     def plot_au(self):
-        while self.trend:
-            time.sleep(0.1)
-            if not self.trend:
-                break
-        plt.bar(au_list, self.au_row_queue.popleft())
-        plt.title('Action Units')
-        plt.ylim(0, 5)
-        plt.yscale('linear')
-        buffer = BytesIO()
-        plt.savefig(buffer, format='png')
-        plt.close()
+        background = Image.open("./charts/au_empty.png")
+        bar = Image.open("./charts/au_bar.png")
+        x_begin = 103
+        y_begin = 59
+        space = 6
+        width = bar.size[0]
+        au_row = self.au_row_queue.popleft()
+        i = 0
+        while i < len(au_row):
+            y_resize = int(368 * au_row[i] / 5)
+            if y_resize != 0:
+                bar_resized = bar.resize((width, y_resize))
+                background.paste(bar_resized, (x_begin + (space + width) * i, y_begin + (bar.size[1] - y_resize)),
+                                 mask=bar_resized)
+            i += 1
 
         self.plotting_au = False
         self.plot_au_label.place_forget()
-        self.image_au = Image.open(buffer)
+        self.image_au = background
         self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
         self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
         self.plot_au_canvas.image = self.photo_au
@@ -215,7 +218,7 @@ class lstm_gui(tk.Frame):
         if not self.pain_list:
             current_value = 0
         else:
-            current_value = self.pain_list[len(self.pain_list) - 1]
+            current_value = self.pain_list[-1]
 
         a = self.df_au[:90].to_numpy()
         a = a.reshape(1, time_step, 17)
@@ -228,13 +231,8 @@ class lstm_gui(tk.Frame):
         self.pain_list.append(pain[0][0])
         self.frame_count_list.append(self.n_prediction)
 
-        while self.plotting_au:
-            time.sleep(0.1)
-            if not self.plotting_au:
-                break
-
-        self.trend = True
         # grafico pain label
+
         plt.figure()
         plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
         plt.xlim(left=1)
@@ -247,7 +245,6 @@ class lstm_gui(tk.Frame):
         buffer = BytesIO()
         plt.savefig(buffer, format='png')
         plt.close()
-        self.trend = False
         self.plot_pain_label.place_forget()
         self.image_g = Image.open(buffer)
         self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
@@ -275,17 +272,14 @@ class lstm_gui(tk.Frame):
         self.df_au.drop(index=self.df_au.index[:int(time_step * overlapping)], axis=0, inplace=True)
 
     def video_ended(self):
-        # print(f"****feature estratte {self.df_au.shape[0]}")
-        # print(f"frame estratti {self.frame_queue.__len__()}")
-        while self.frame_queue.__len__() > time_step:
+
+        while len(self.frame_queue) > time_step:
             if self.thread_number <= 12:
                 threading.Thread(target=self.feature_extraction).start()
                 self.thread_number += 1
             time.sleep(0.1)
             if self.plotting_au:
                 time.sleep(0.1)
-            # print(f"****feature estratte {self.df_au.shape[0]}")
-            # print(f"frame estratti {self.frame_queue.__len__()}")
 
     def show_frame(self, st):
         # start_time = time.time()
