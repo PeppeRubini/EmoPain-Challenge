@@ -15,7 +15,7 @@ class main_window(tk.Tk):
         tk.Tk.__init__(self)
         self._frame = None
         self.switch_frame("home_gui")
-        self.attributes("-topmost", True)
+        self.lift()
 
     def switch_frame(self, page_name):
         """Destroys current frame and replaces it with a new one."""

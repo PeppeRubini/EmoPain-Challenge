@@ -83,32 +83,41 @@ class lstm_gui(tk.Frame):
         self.au_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=3, bg='#1F77B4')
         self.au_frame.place(x=664, y=50)
 
+        self.photo_au = Image.open("./charts/au_empty.png")
+        self.photo_au = ImageTk.PhotoImage(self.photo_au.resize((450, 350)))
+
         self.plot_au_canvas = tk.Canvas(self.au_frame, width=450, height=350, bg='#E6EEF2')
         self.plot_au_canvas.pack()
 
-        self.plot_au_label = tk.Label(self.plot_au_canvas, text="No action unit graph generated",
-                                      font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
-        self.plot_au_label.place(x=70, y=160)
+        self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
+        self.plot_au_canvas.image = self.photo_au
 
         self.plot_frame = tk.Frame(self.root, width=450, height=350, relief=tk.RIDGE, borderwidth=3, bg='#1F77B4')
         self.plot_frame.place(x=664, y=418)
 
+        self.photo_pain = Image.open("./charts/trend_clean.png")
+        self.photo_pain = ImageTk.PhotoImage(self.photo_pain.resize((450, 350)))
+
         self.plot_pain_canvas = tk.Canvas(self.plot_frame, width=450, height=350, bg='#E6EEF2')
         self.plot_pain_canvas.pack()
 
-        self.plot_pain_label = tk.Label(self.plot_pain_canvas, text="No pain graph generated",
+        self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_pain)
+        self.plot_pain_canvas.image = self.photo_pain
+
+        self.plot_pain_label = tk.Label(self.plot_pain_canvas, text="No pain trend available for images",
                                         font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
-        self.plot_pain_label.place(x=103, y=160)
 
         self.gauge_frame = tk.Frame(self.root, width=640, height=220, relief=tk.RIDGE, borderwidth=3, bg='#1F77B4')
         self.gauge_frame.place(x=7, y=548)
 
+        self.photo_gauge = Image.open("./charts/gauge_clean.png")
+        self.photo_gauge = ImageTk.PhotoImage(self.photo_gauge)
+
         self.gauge_canvas = tk.Canvas(self.gauge_frame, width=640, height=220, bg='#E6EEF2')
         self.gauge_canvas.pack()
 
-        self.gauge_label = tk.Label(self.gauge_canvas, text="No prediction generated",
-                                    font=('Helvetica', 16, 'bold'), fg='#1F77B4', bg='#E6EEF2')
-        self.gauge_label.place(x=200, y=95)
+        self.gauge_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_gauge)
+        self.gauge_canvas.image = self.photo_gauge
 
         # aggiunte per thread
         self.frame = None
@@ -121,18 +130,20 @@ class lstm_gui(tk.Frame):
         self.extracting_feature = False
         self.n_prediction = 0
         self.thread_number = 0
+        self.processing_image = False
 
     def set_frame_switched(self, boolean):
         self.frame_switched = boolean
 
     def reinitialize(self):
-        self.plot_au_canvas.delete('all')
-        self.plot_pain_canvas.delete('all')
-        self.gauge_canvas.delete('all')
+        self.plot_pain_label.place_forget()
 
-        self.plot_au_label.place(x=70, y=160)
-        self.plot_pain_label.place(x=103, y=160)
-        self.gauge_label.place(x=200, y=95)
+        self.plot_au_canvas.image = self.photo_au
+
+        self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_pain)
+        self.plot_pain_canvas.image = self.photo_pain
+
+        self.gauge_canvas.image = self.photo_gauge
 
         self.pain_list = []
         self.frame_count_list = []
@@ -184,7 +195,6 @@ class lstm_gui(tk.Frame):
             i += 1
 
         self.plotting_au = False
-        self.plot_au_label.place_forget()
         self.image_au = background
         self.photo_au = ImageTk.PhotoImage(self.image_au.resize((450, 350)))
         self.plot_au_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_au)
@@ -256,7 +266,6 @@ class lstm_gui(tk.Frame):
         step = abs(current_value - prediction) / n
         if current_value > prediction:
             step *= -1
-        self.gauge_label.place_forget()
         i = 0
         for x in np.arange(current_value, prediction, step):
             i += 1

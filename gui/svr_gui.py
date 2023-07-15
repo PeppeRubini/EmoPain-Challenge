@@ -34,6 +34,7 @@ class svr_gui(lstm_gui):
         create_button(265, 5, self.menu_frame, 'image button.png', 'image button clicked.png', self.open_image)
         create_button(1000, 5, self.menu_frame, 'change to lstm button.png', 'change to lstm button clicked.png',
                       lambda: [self.set_frame_switched(True), root.switch_frame("lstm_gui")])
+
         self.trend = False
 
     def feature_extraction(self):
@@ -81,29 +82,31 @@ class svr_gui(lstm_gui):
                 plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
             else:
                 plt.plot(self.frame_count_list, self.pain_list, linewidth=2)
-            plt.xlim(left=1)
-            plt.xscale('linear')
-            plt.ylim([0, 3])
-            plt.xlabel('prediction')
-            plt.ylabel('pain')
-            plt.title('Pain Trend')
-            plt.grid(True)
-            buffer = BytesIO()
-            plt.savefig(buffer, format='png')
-            plt.close()
-            self.plot_pain_label.place_forget()
-            self.image_g = Image.open(buffer)
-            self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
-            self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
-            self.plot_pain_canvas.image = self.photo_g
-            self.trend = False
+
+            print("Processing image", self.processing_image)
+            if not self.processing_image:
+                plt.xlim(left=1)
+                plt.xscale('linear')
+                plt.ylim([0, 3])
+                plt.xlabel('prediction')
+                plt.ylabel('pain')
+                plt.title('Pain Trend')
+                plt.grid(True)
+                buffer = BytesIO()
+                plt.savefig(buffer, format='png')
+                plt.close()
+                self.image_g = Image.open(buffer)
+                self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
+                self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
+                self.plot_pain_canvas.image = self.photo_g
+                self.trend = False
+                self.processing_image = False
 
         # grafico pain label (gauge)
         n = 2
         step = abs(current_value - prediction) / n
         if current_value > prediction:
             step *= -1
-        self.gauge_label.place_forget()
         i = 0
         for x in np.arange(current_value, prediction, step):
             i += 1
@@ -139,7 +142,10 @@ class svr_gui(lstm_gui):
                                                                                     "*.dng", "*.crw", "*.mef",
                                                                                     "*.webp"])])
         if self.image_path != "":
+            self.processing_image = True
             self.reinitialize()
+            self.plot_pain_canvas.delete("all")
+            self.plot_pain_label.place(x=54, y=160)
             self.frame = cv2.imread(self.image_path)
             if self.frame.shape[1] / self.frame.shape[0] != 4 / 3:
                 self.frame = make_4_3(self.frame)
