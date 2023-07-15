@@ -66,9 +66,14 @@ class svr_gui(lstm_gui):
             current_value = self.pain_list[-1]
         if len(self.df_au) == 0:
             return
+
         pain = model.predict(self.df_au.head(1))
         self.n_prediction += 1
         # print(pain[0])
+        try:
+            self.df_au.drop(self.df_au.index[0], inplace=True)
+        except:
+            pass
 
         prediction = round(pain[0], 2)
 
@@ -76,15 +81,13 @@ class svr_gui(lstm_gui):
         self.frame_count_list.append(self.n_prediction)
         # grafico pain label
         if not self.trend:
-            self.trend = True
-            plt.figure()
-            if len(self.pain_list) < 30:
-                plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
-            else:
-                plt.plot(self.frame_count_list, self.pain_list, linewidth=2)
-
-            print("Processing image", self.processing_image)
             if not self.processing_image:
+                self.trend = True
+                plt.figure()
+                if len(self.pain_list) < 30:
+                    plt.plot(self.frame_count_list, self.pain_list, marker='o', linewidth=2)
+                else:
+                    plt.plot(self.frame_count_list, self.pain_list, linewidth=2)
                 plt.xlim(left=1)
                 plt.xscale('linear')
                 plt.ylim([0, 3])
@@ -95,11 +98,12 @@ class svr_gui(lstm_gui):
                 buffer = BytesIO()
                 plt.savefig(buffer, format='png')
                 plt.close()
+                self.trend = False
                 self.image_g = Image.open(buffer)
                 self.photo_g = ImageTk.PhotoImage(self.image_g.resize((450, 350)))
                 self.plot_pain_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo_g)
                 self.plot_pain_canvas.image = self.photo_g
-                self.trend = False
+            else:
                 self.processing_image = False
 
         # grafico pain label (gauge)
@@ -118,8 +122,6 @@ class svr_gui(lstm_gui):
             photo_gauge = ImageTk.PhotoImage(image_gauge)
             self.gauge_canvas.create_image(0, 0, anchor=tk.NW, image=photo_gauge)
             self.gauge_canvas.image = photo_gauge
-
-        self.df_au.drop(self.df_au.index, inplace=True)
 
     def video_ended(self):
         while len(self.frame_queue) > 0:
