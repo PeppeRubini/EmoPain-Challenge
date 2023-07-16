@@ -17,7 +17,6 @@ class home_gui(tk.Frame):
                               bg='#F0FAFF')
         self.label.place(x=46, y=35)
 
-
         create_button(60, 100, self, 'lstm button.png', 'lstm button clicked.png',
                       lambda: root.switch_frame("lstm_gui"))
         create_button(253, 100, self, 'svr button.png', 'svr button clicked.png',

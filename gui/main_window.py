@@ -25,6 +25,7 @@ class main_window(tk.Tk):
             self._frame.destroy()
         self._frame = new_frame
         self._frame.pack()
+        return self._frame
 
 
 if __name__ == "__main__":

@@ -61,6 +61,7 @@ class lstm_gui(tk.Frame):
         self.root.resizable(False, False)
 
         self.frame_switched = False
+        self.current_frame = "lstm_gui"
 
         self.menu_frame = tk.Frame(self.root, width=1132, height=50, relief=tk.RIDGE, bg='#F0FAFF')
         self.menu_frame.place(x=0, y=0)
@@ -157,11 +158,13 @@ class lstm_gui(tk.Frame):
     def open_webcam(self):
         cap = cv2.VideoCapture(0, cv2.CAP_DSHOW)
         if cap.isOpened():
-            self.frame_count = 0
-            self.start_time = time.time()
-            self.cap = cv2.VideoCapture(0)
-            self.reinitialize()
-            self.show_frame(self.start_time)
+            self.set_frame_switched(True)
+            new_frame = self.root.switch_frame(self.current_frame)
+            new_frame.frame_count = 0
+            new_frame.start_time = time.time()
+            new_frame.cap = cv2.VideoCapture(0)
+            new_frame.reinitialize()
+            new_frame.show_frame(new_frame.start_time)
         else:
             tk.messagebox.showerror("Error", "No webcam found")
 
@@ -171,11 +174,13 @@ class lstm_gui(tk.Frame):
                                                                                     "*.avi", "*.mkv", "*.webm",
                                                                                     "*.m4v"])])
         if self.video_path != "":
-            self.frame_count = 0
-            self.start_time = time.time()
-            self.cap = cv2.VideoCapture(self.video_path)
-            self.reinitialize()
-            self.show_frame(self.start_time)
+            self.set_frame_switched(True)
+            new_frame = self.root.switch_frame(self.current_frame)
+            new_frame.frame_count = 0
+            new_frame.start_time = time.time()
+            new_frame.cap = cv2.VideoCapture(self.video_path)
+            new_frame.reinitialize()
+            new_frame.show_frame(new_frame.start_time)
 
     def plot_au(self):
         background = Image.open("./charts/au_empty.png")

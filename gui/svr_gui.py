@@ -36,6 +36,7 @@ class svr_gui(lstm_gui):
                       lambda: [self.set_frame_switched(True), root.switch_frame("lstm_gui")])
 
         self.trend = False
+        self.current_frame = "svr_gui"
 
     def feature_extraction(self):
         try:
@@ -144,22 +145,24 @@ class svr_gui(lstm_gui):
                                                                                     "*.dng", "*.crw", "*.mef",
                                                                                     "*.webp"])])
         if self.image_path != "":
-            self.processing_image = True
-            self.reinitialize()
-            self.plot_pain_canvas.delete("all")
-            self.plot_pain_label.place(x=54, y=160)
-            self.frame = cv2.imread(self.image_path)
-            if self.frame.shape[1] / self.frame.shape[0] != 4 / 3:
-                self.frame = make_4_3(self.frame)
-                self.frame = cv2.resize(self.frame, (640, 480))
-            self.video_label.place_forget()
-            self.frame = cv2.cvtColor(self.frame, cv2.COLOR_BGR2RGB)
-            self.image = Image.fromarray(self.frame)
-            self.photo = ImageTk.PhotoImage(self.image)
-            self.frame_queue.append(self.frame)
-            self.video_canvas.create_image(0, 0, anchor=tk.NW, image=self.photo)
-            if not self.extracting_feature:
-                threading.Thread(target=self.feature_extraction).start()
+            self.set_frame_switched(True)
+            new_frame = self.root.switch_frame("svr_gui")
+            new_frame.processing_image = True
+            new_frame.reinitialize()
+            new_frame.plot_pain_canvas.delete("all")
+            new_frame.plot_pain_label.place(x=54, y=160)
+            new_frame.frame = cv2.imread(self.image_path)
+            if new_frame.frame.shape[1] / new_frame.frame.shape[0] != 4 / 3:
+                new_frame.frame = make_4_3(new_frame.frame)
+                new_frame.frame = cv2.resize(new_frame.frame, (640, 480))
+            new_frame.video_label.place_forget()
+            new_frame.frame = cv2.cvtColor(new_frame.frame, cv2.COLOR_BGR2RGB)
+            new_frame.image = Image.fromarray(new_frame.frame)
+            new_frame.photo = ImageTk.PhotoImage(new_frame.image)
+            new_frame.frame_queue.append(new_frame.frame)
+            new_frame.video_canvas.create_image(0, 0, anchor=tk.NW, image=new_frame.photo)
+            if not new_frame.extracting_feature:
+                threading.Thread(target=new_frame.feature_extraction).start()
 
 
 model = load('../pain_model/svr.pkl')
