@@ -5,6 +5,7 @@ import matplotlib.pyplot as plt
 import tkinter as tk
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 
+
 def label_dict_bin(array):
     d = {"0": 0, "1": 0}
     for y in array:
@@ -62,7 +63,7 @@ def print_dict(d):
         # print(v)
 
 
-def pie_chart_lable(dictionary):
+def pie_chart_label(dictionary):
     labels = []
     sizes = []
     for x, y in dictionary.items():
@@ -71,8 +72,8 @@ def pie_chart_lable(dictionary):
     plt.pie(sizes, labels=labels, autopct='%1.1f%%')
     plt.axis('equal')
     plt.show()
-    
-    
+
+
 def center_window(window, app_width, app_height):
     screen_width = window.winfo_screenwidth()
     screen_height = window.winfo_screenheight() - 80
