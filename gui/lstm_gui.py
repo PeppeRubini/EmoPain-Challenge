@@ -329,5 +329,5 @@ class lstm_gui(tk.Frame):
                 self.video_canvas.after_idle(self.show_frame, self.start_time)
 
 
-model = keras.models.load_model('../pain_model/modello90-05_3.h5')
+model = keras.models.load_model('../pain_model/lstm.h5')
 detector = Detector(face_model=face_model, landmark_model=landmark_model, au_model=au_model)
