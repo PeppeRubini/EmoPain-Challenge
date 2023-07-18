@@ -27,9 +27,9 @@ if input("Do you want to see the graphs? (y/n)") == "y":
     pie_chart_label(label_dict(y_valid))
 
 model = Sequential()
-model.add(LSTM(64, dropout=0.2, recurrent_dropout=0.2, input_shape=(time_step, num_features), return_sequences=True,
-               kernel_regularizer=l2(0.01)))
-model.add(LSTM(64, dropout=0.2, recurrent_dropout=0.2, kernel_regularizer=l2(0.01)))
+model.add(LSTM(64, dropout=0.5, recurrent_dropout=0.2, input_shape=(time_step, num_features), return_sequences=True,
+               kernel_regularizer=l2(0.1)))
+model.add(LSTM(64, dropout=0.5, recurrent_dropout=0.2, kernel_regularizer=l2(0.1)))
 model.add(Dense(64, activation="relu"))
 model.add(Dense(32, activation="relu"))
 model.add(Dense(1, activation="relu"))
@@ -37,6 +37,7 @@ model.add(Dense(1, activation="relu"))
 model.compile(optimizer="adam", loss="mse",
               metrics=['accuracy', tf.keras.metrics.RootMeanSquaredError(), tf.keras.metrics.MeanAbsoluteError()])
 model.fit(x_train, y_train, epochs=15, verbose=1)
+
 x_valid = x_valid.reshape((len(x_valid), time_step, num_features))
 score = model.evaluate(x_valid, y_valid)
 
